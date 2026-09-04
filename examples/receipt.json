@@ -1,0 +1,5 @@
+{
+  "scope": "godlock",
+  "kind": "receipt",
+  "note": "Example GodLock receipt payload for a downloaded node. Not a write to godlock.uk."
+}

@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "azieltether"
+version = "0.1.0"
+description = "Central × decentral software tether for Aziel Eliab products. Prefer central, fall back to peers, reconcile on restore. Not a VPN."
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [{name = "Aziel Eliab"}]
+requires-python = ">=3.10"
+keywords = [
+  "tether",
+  "hash-chain",
+  "ed25519",
+  "mesh",
+  "receipts",
+  "aziel",
+  "godlock",
+  "corpus",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Security :: Cryptography",
+  "Intended Audience :: Developers",
+]
+dependencies = [
+  "cryptography>=42",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4"]
+
+[project.scripts]
+azieltether = "azieltether.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/AzielEliab/azieltether"
+Download = "https://azieltether-download-tracker.vibelock.workers.dev/download"
+Catalog = "https://aziel-runtime.vibelock.workers.dev/"
+Issues = "https://github.com/AzielEliab/azieltether/issues"
+
+[tool.setuptools.packages.find]
+include = ["azieltether*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

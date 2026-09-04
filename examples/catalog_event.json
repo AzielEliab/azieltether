@@ -1,0 +1,7 @@
+{
+  "scope": "aziel-runtime",
+  "kind": "catalog_event",
+  "op": "index",
+  "slug": "azieltether",
+  "note": "Example catalog event for aziel-runtime."
+}

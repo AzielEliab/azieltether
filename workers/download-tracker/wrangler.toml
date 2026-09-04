@@ -1,0 +1,39 @@
+name = "azieltether-download-tracker"
+main = "src/index.js"
+compatibility_date = "2026-09-04"
+workers_dev = true
+account_id = "ac575a9b822bea2bed97d0ab73aed238"
+
+[[kv_namespaces]]
+binding = "DOWNLOADS"
+id = "d8995e42dcfa4d7a903481a5bba72f1e"
+
+[[kv_namespaces]]
+binding = "TETHER"
+id = "8493f61a40424576aad5b70a59d30b37"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = [
+  "/",
+  "/download",
+  "/download/*",
+  "/stats",
+  "/event",
+  "/count",
+  "/install.sh",
+  "/v1",
+  "/v1/*",
+  "/openapi.json",
+  "/cite.json",
+  "/llms.txt",
+  "/ai.txt",
+  "/robots.txt",
+  "/sitemap.xml",
+  "/ai",
+  "/ai/*",
+]
+
+[observability]
+enabled = true
