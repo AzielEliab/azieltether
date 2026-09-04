@@ -32,7 +32,10 @@ class Store:
 
     def ensure_node(self) -> dict[str, Any]:
         if self.node_path.exists():
-            return self.load_node()
+            data = self._read(self.node_path)
+            if not data.get("node_id") or not data.get("pubkey") or not data.get("private"):
+                raise ChainError("node.json is missing node_id, pubkey, or private")
+            return data
         private_b64, public_b64 = generate_keypair()
         record = {
             "product": PRODUCT,
@@ -47,11 +50,7 @@ class Store:
         return record
 
     def load_node(self) -> dict[str, Any]:
-        self.ensure_node()
-        data = self._read(self.node_path)
-        if not data.get("node_id") or not data.get("pubkey") or not data.get("private"):
-            raise ChainError("node.json is missing node_id, pubkey, or private")
-        return data
+        return self.ensure_node()
 
     def public_node(self) -> dict[str, Any]:
         node = self.load_node()
