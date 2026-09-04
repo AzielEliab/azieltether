@@ -1,0 +1,6 @@
+{
+  "name": "azieltether-download-tracker",
+  "private": true,
+  "description": "AzielTether counted download + tether bootstrap Worker. Author Aziel Eliab.",
+  "license": "Apache-2.0"
+}

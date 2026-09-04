@@ -1,0 +1,7 @@
+{
+  "scope": "aziel-corpus",
+  "kind": "ingest_envelope",
+  "title": "Public scan example",
+  "visibility": "public",
+  "note": "Public Corpus ingest envelope only. Never an Aziel Library operator write."
+}
