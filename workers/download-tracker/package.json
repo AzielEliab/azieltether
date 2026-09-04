@@ -1,0 +1,8 @@
+{
+  "name": "azieltether-download-tracker",
+  "private": true,
+  "description": "AzielTether counted download tracker. Author Aziel Eliab.",
+  "dependencies": {
+    "wrangler": "^4.127.1"
+  }
+}
