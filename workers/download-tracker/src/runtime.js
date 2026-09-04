@@ -30,7 +30,7 @@ Author: **Aziel Eliab**. Version ${VERSION}.
 
 Always send \`User-Agent: Mozilla/5.0\`. Cloudflare Workers may 403 an empty agent.
 
-THIS IS: a content/work tether for receipts, public Corpus ingest envelopes, and catalog events.
+THIS IS: a content/work tether plus a cross-product survival lattice and a dual-chain conflict precedent.
 THIS IS NOT: a VPN, Tor, or anonymity network (that is a different product). The Worker is a bootstrap directory and holding pen — not a full mesh. Live public HTTPS boards (godlock.uk, the Corpus library UI) stay mesh-free.
 
 ## Endpoints (this Worker)
@@ -76,6 +76,12 @@ Then open http://127.0.0.1:19740 (this computer only).
 - \`godlock\` — receipts
 - \`aziel-corpus\` — public Corpus ingest envelopes only (never Aziel Library operator writes)
 - \`aziel-runtime\` — catalog events
+- \`lattice\` — cross-product survival anchors (any surviving product tip rehydrates the others)
+- \`precedent\` — chain B conflict receipts (never rewrite chain A)
+
+Local CLI also: \`azieltether conflict-status\`, \`azieltether anchor\`.
+
+\`on_transfer(event)\` hooks: \`azieltether.hooks.register(name, fn)\` so SPRE/CLCE can rescore on every upload or download.
 
 Apache-2.0. Forks are welcome and always allowed.
 

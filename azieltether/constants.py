@@ -26,12 +26,51 @@ PUBLIC_SITES = {
     "aziel-runtime": "https://aziel-runtime.vibelock.workers.dev",
 }
 
-SCOPES = ("godlock", "aziel-corpus", "aziel-runtime")
+WORK_SCOPES = ("godlock", "aziel-corpus", "aziel-runtime")
+LATTICE_SCOPE = "lattice"
+PRECEDENT_SCOPE = "precedent"
+SCOPES = (*WORK_SCOPES, LATTICE_SCOPE, PRECEDENT_SCOPE)
 SCOPE_KINDS = {
     "godlock": ("receipt",),
     "aziel-corpus": ("ingest_envelope",),
     "aziel-runtime": ("catalog_event",),
+    LATTICE_SCOPE: ("anchor",),
+    PRECEDENT_SCOPE: ("conflict_receipt",),
 }
+
+# Products that may post lattice anchors. New slugs may join if they match PRODUCT_SLUG_RE.
+LATTICE_PRODUCTS = frozenset(
+    {
+        "godlock",
+        "aziel-corpus",
+        "aziel-runtime",
+        "azieltether",
+        "foldlock",
+        "az-clce",
+        "temporallock",
+        "staticclock",
+        "miragegrid",
+        "azos",
+        "azai",
+        "ark",
+        "decisiongate",
+        "forgereceipts",
+        "veillock",
+        "vibelock",
+        "codelock",
+        "shadowlock",
+        "spectrallock",
+        "chronolock",
+        "postking",
+        "glossafilter",
+        "employeelock",
+        "whistlelock",
+        "trajectorylock",
+        "zsolver",
+        "azbot",
+    }
+)
+PRODUCT_SLUG_RE = r"^[a-z][a-z0-9-]{1,40}$"
 
 # Peer path must never write Aziel Library operator records.
 FORBIDDEN_CORPUS_KINDS = frozenset(

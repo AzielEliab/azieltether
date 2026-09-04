@@ -4,7 +4,7 @@
  * Author: Aziel Eliab.
  */
 
-const SCOPES = new Set(["godlock", "aziel-corpus", "aziel-runtime"]);
+const SCOPES = new Set(["godlock", "aziel-corpus", "aziel-runtime", "lattice", "precedent"]);
 const FORBIDDEN_KINDS = new Set([
   "library_operator",
   "operator_record",
@@ -96,6 +96,8 @@ async function verifyBatch(batch) {
     godlock: "receipt",
     "aziel-corpus": "ingest_envelope",
     "aziel-runtime": "catalog_event",
+    lattice: "anchor",
+    precedent: "conflict_receipt",
   };
   if (batch.kind !== kinds[batch.scope]) throw new Error("kind is not allowed for scope");
   if (isOperatorLibraryWrite(batch)) {
@@ -180,6 +182,8 @@ export async function handleTetherApi(request, url, env) {
         role: "tether bootstrap",
         note: "Peer directory and batch holding. This Worker is not a full mesh. Live public HTTPS boards stay mesh-free.",
         scopes: [...SCOPES],
+        lattice: "cross-product survival anchors",
+        precedent: "chain B; chain A is never rewritten",
         genesis_prev_hash: GENESIS,
       });
     }

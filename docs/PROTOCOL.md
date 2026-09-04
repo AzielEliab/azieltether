@@ -48,8 +48,9 @@ A receiver **must** verify, in order:
 5. recomputed hash equals `hash`
 6. Ed25519 verify(`pubkey`, `hash`, `signature`) succeeds
 7. if the node already has a tip for that scope, `prev_hash` equals that tip (or the batch is a duplicate)
+8. a **same-hash collision** or **fork** does **not** silently merge — see Dual-chain conflict
 
-Broken links are refused. Duplicates (same `hash`) are ignored.
+Broken links are refused. Identical duplicates (same hash and same signing body) are idempotent sync. That is not a silent merge.
 
 ## Ed25519 node keypair
 
@@ -68,8 +69,78 @@ The private key never leaves the machine and must not be committed. Rotate by de
 | `godlock` | `receipt` | GodLock receipts / challenge records from **downloaded** GodLock | Writing the public `godlock.uk` board as a mesh |
 | `aziel-corpus` | `ingest_envelope` | Public Corpus ingest envelopes | Operator Aziel Library writes (`operator: true`, `library_role=operator`, or kinds `library_operator` / `operator_record` / `aziel_library_write`) |
 | `aziel-runtime` | `catalog_event` | Catalog events for aziel-runtime | Treating the catalog HTML as a mesh peer |
+| `lattice` | `anchor` | Cross-product survival anchors | Claiming the Worker is the lattice itself |
+| `precedent` | `conflict_receipt` | Chain B conflict precedent | Rewriting chain A |
 
 The peer path **cannot** write Aziel Library operator records. Public Corpus envelopes only.
+
+## Cross-product survival lattice
+
+Every Aziel software node participates in **one** lattice. Scope `lattice`, kind `anchor`.
+
+Anchor payload (also signed as a normal batch):
+
+```json
+{
+  "product": "foldlock",
+  "tip_hash": "64-hex of that product's work tip",
+  "prev_anchor": "previous lattice hash or 64 zeros",
+  "timestamp": "2026-09-04T00:00:00Z",
+  "node_id": "64-hex",
+  "cross_links": {
+    "godlock": "…",
+    "aziel-corpus": "…",
+    "foldlock": "…"
+  }
+}
+```
+
+Mutual survival:
+
+- If GodLock survives, corpus can survive (and vice versa) because each anchor carries both tips in `cross_links`.
+- If **any** product software node survives (FoldLock, AZ-CLCE, TemporalLock, StaticClock, MirageGrid, AZOS, …), GodLock and corpus **rehydrate** from those anchored cross-links.
+- Any surviving tip bootstraps verification of the others: walk the lattice, verify signatures, read `cross_links`.
+
+`azieltether anchor` posts one anchor per local work tip. `azieltether lattice-status` prints rehydratable tips.
+
+This is still a **content/work** lattice. Not a VPN. Public HTTPS boards stay mesh-free.
+
+## Dual-chain conflict (precedent)
+
+If two online users converge on the **same hash-chain tip** (fork collision or accidental identity):
+
+1. Do **not** silently merge as if nothing happened.
+2. Keep **chain A** exactly as it is (append-only; never rewrite).
+3. Spawn **chain B** (`scope=precedent`, kind `conflict_receipt`) that records:
+   - both parent tips
+   - collision detection receipt (`fork`, `same_hash_collision`, or `accidental_identity`)
+   - which peer set first observed the collision (`observed_by`)
+   - tether link back to chain A (`chain_a_tip` / `tether_link`)
+4. Chain B **sets precedent** for conflict resolution going forward.
+
+Identical duplicate sync (same hash **and** same body) is not a conflict.
+
+`azieltether conflict-status` lists chain-B receipts.
+
+## Structure verify hooks
+
+On every sensed **upload** or **download** (push, pull, reconcile, local serve POST), the node runs a whole-structure verify and then `on_transfer(event)`.
+
+Sibling engines register without being imported:
+
+```python
+import azieltether.hooks as hooks
+
+def clce_rescore(event: dict) -> dict:
+    # event["structure"] already verified the local chains
+    return {"ok": True}
+
+hooks.register("az-clce", clce_rescore)
+```
+
+The event includes `direction` (`upload`|`download`), `via`, `offline`, `batch`, and `structure` (tips + errors). SPRE / AZ-CLCE / others rescore here.
+
+Offline still works: local mint, queue, hash-chain, and hooks fire with `offline: true`. Online still prefers central → peer mesh → reconcile.
 
 ## Batch shape
 

@@ -13,12 +13,15 @@ from azieltether.constants import (
     AUTHOR,
     DEFAULT_HOST,
     DEFAULT_PORT,
+    LATTICE_SCOPE,
     MOTTO,
     PRODUCT,
     SCOPE_KINDS,
-    SCOPES,
+    WORK_SCOPES,
 )
 from azieltether.wiring import build_router, public_site_health
+
+MINT_SCOPES = (*WORK_SCOPES, LATTICE_SCOPE)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -47,7 +50,7 @@ def _parser() -> argparse.ArgumentParser:
     p_ann.add_argument("--json", action="store_true", dest="as_json")
 
     p_push = sub.add_parser("push", help="Mint or send a signed hash-chained batch.")
-    p_push.add_argument("--scope", choices=SCOPES, default="godlock")
+    p_push.add_argument("--scope", choices=MINT_SCOPES, default="godlock")
     p_push.add_argument("--kind", default=None, help="receipt | ingest_envelope | catalog_event")
     p_push.add_argument("--payload", default="{}", help="JSON object string.")
     p_push.add_argument("--payload-file", dest="payload_file", default=None)
@@ -63,10 +66,23 @@ def _parser() -> argparse.ArgumentParser:
     p_rec.add_argument("--json", action="store_true", dest="as_json")
 
     p_batch = sub.add_parser("batch", help="Mint a local batch without sending.")
-    p_batch.add_argument("--scope", choices=SCOPES, default="godlock")
+    p_batch.add_argument("--scope", choices=MINT_SCOPES, default="godlock")
     p_batch.add_argument("--kind", default=None)
     p_batch.add_argument("--payload", default="{}")
     p_batch.add_argument("--payload-file", dest="payload_file", default=None)
+
+    p_conf = sub.add_parser(
+        "conflict-status",
+        help="Show chain-B precedent receipts. Chain A is never rewritten.",
+    )
+    p_conf.add_argument("--json", action="store_true", dest="as_json")
+
+    p_anc = sub.add_parser("anchor", help="Post lattice anchors for local product tips.")
+    p_anc.add_argument("--product", default=None, help="One product slug, or all local work tips.")
+    p_anc.add_argument("--json", action="store_true", dest="as_json")
+
+    p_lat = sub.add_parser("lattice-status", help="Show rehydratable tips from the survival lattice.")
+    p_lat.add_argument("--json", action="store_true", dest="as_json")
 
     return parser
 
@@ -156,6 +172,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         batch = router.store.mint_batch(args.scope, _kind(args), _payload(args))
         print(json.dumps(batch, indent=2, ensure_ascii=False))
         return 0
+
+    if args.cmd == "conflict-status":
+        result = router.conflict_status()
+        _print(result, args.as_json)
+        return 0
+
+    if args.cmd == "anchor":
+        result = router.anchor(args.product)
+        _print(result, args.as_json)
+        return 0 if result.get("ok") else 1
+
+    if args.cmd == "lattice-status":
+        result = router.lattice_status()
+        _print(result, args.as_json)
+        return 0 if result.get("ok") else 1
 
     raise SystemExit(f"unknown command {args.cmd}")
 

@@ -50,6 +50,9 @@ Then open http://127.0.0.1:19740 (this computer only). The page says whether the
 | `azieltether pull` | Fetch batches from central or peers |
 | `azieltether reconcile` | Push local backlog to central when it returns |
 | `azieltether batch` | Mint a local batch without sending |
+| `azieltether anchor` | Post lattice survival anchors for local product tips |
+| `azieltether lattice-status` | Tips that can rehydrate GodLock / corpus / others |
+| `azieltether conflict-status` | Chain-B precedent receipts (chain A is never rewritten) |
 
 ```bash
 azieltether push --scope godlock --kind receipt --payload '{"note":"desk closed"}'
@@ -76,8 +79,16 @@ Full rules: [docs/PROTOCOL.md](docs/PROTOCOL.md).
 | `godlock` | `receipt` | GodLock receipts from downloaded software — not a mesh on godlock.uk |
 | `aziel-corpus` | `ingest_envelope` | Public Corpus ingest envelopes. **Never** Aziel Library operator writes |
 | `aziel-runtime` | `catalog_event` | Catalog events |
+| `lattice` | `anchor` | Cross-product survival bookmarks. Any surviving product tip rehydrates the others |
+| `precedent` | `conflict_receipt` | Second immutable chain when two users hit the same tip. Never rewrite chain A |
 
 The peer path cannot write Aziel Library operator records.
+
+**Mutual survival.** If GodLock survives, corpus can survive (and vice versa). If any downloaded product node survives (FoldLock, AZ-CLCE, TemporalLock, StaticClock, MirageGrid, AZOS, …), GodLock and corpus rehydrate from lattice anchors.
+
+**Conflicts.** Same-hash / fork collisions do not silently merge. Chain B records both parent tips and sets precedent.
+
+**Hooks.** Every upload or download runs `azieltether.hooks.on_transfer(event)` after a whole-structure verify so SPRE / AZ-CLCE can rescore.
 
 ## Worker bootstrap (not a full mesh)
 

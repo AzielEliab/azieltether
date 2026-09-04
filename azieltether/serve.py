@@ -19,6 +19,7 @@ from azieltether.constants import (
     PRODUCT,
     VERSION,
 )
+from azieltether.hooks import on_transfer, transfer_event
 from azieltether.router import Router
 from azieltether.store import Store
 from azieltether.transport import TransportError
@@ -96,6 +97,12 @@ class TetherHandler(BaseHTTPRequestHandler):
                     batches.append(batch)
             self._json(200, {"ok": True, "batches": batches, "count": len(batches)})
             return
+        if path == "/v1/conflicts":
+            self._json(200, self.router.conflict_status())
+            return
+        if path == "/v1/lattice":
+            self._json(200, self.router.lattice_status())
+            return
         self._json(404, {"error": "not found"})
 
     def do_POST(self) -> None:  # noqa: N802
@@ -127,7 +134,26 @@ class TetherHandler(BaseHTTPRequestHandler):
                 return
             if path == "/v1/batch":
                 accepted = self.router.store.accept_batch(body)
-                self._json(200, {"ok": True, "via": "local-serve", "hash": accepted["hash"]})
+                hooks = on_transfer(
+                    transfer_event(
+                        direction="download",
+                        batch=accepted,
+                        via="local-serve",
+                        store=self.router.store,
+                        offline=self.router.route_name() == "local",
+                    )
+                )
+                conflicted = self.router.store.last_accept == "precedent"
+                self._json(
+                    200,
+                    {
+                        "ok": True,
+                        "via": "precedent" if conflicted else "local-serve",
+                        "hash": accepted["hash"],
+                        "conflict": conflicted,
+                        "hooks": hooks,
+                    },
+                )
                 return
         except (ChainError, TransportError, KeyError, TypeError) as exc:
             self._json(400, {"error": str(exc)})
@@ -160,6 +186,8 @@ def status_page(router: Router) -> str:
     backlog = doctor.get("backlog") or 0
     batches = doctor.get("batches") or {}
     batch_total = sum(int(v) for v in batches.values())
+    lattice = doctor.get("lattice_anchors") or 0
+    conflicts = doctor.get("precedent_length") or 0
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -223,11 +251,20 @@ def status_page(router: Router) -> str:
       <div class="label">Batches already on this computer</div>
       <p class="big" style="color:#d7deea">{batch_total}</p>
     </section>
+    <section class="card">
+      <div class="label">Survival bookmarks (lattice anchors)</div>
+      <p class="big" style="color:#d7deea">{lattice}</p>
+    </section>
+    <section class="card">
+      <div class="label">Conflict notes (second chain — first chain was not erased)</div>
+      <p class="big" style="color:#e6c36a">{conflicts}</p>
+    </section>
   </div>
   <div class="note">
-    <p><strong>What this is:</strong> a tether for receipts, public library envelopes, and catalog events.</p>
+    <p><strong>What this is:</strong> a tether for receipts, public library envelopes, catalog events, and a shared survival lattice. If one product folder survives, the others can find their last page from the bookmarks.</p>
     <p><strong>What this is not:</strong> a VPN, a secret network, or a way to change the public websites. Those sites stay ordinary HTTPS.</p>
-    <p>Commands: <code>azieltether doctor</code> · <code>azieltether announce</code> · <code>azieltether push</code> · <code>azieltether pull</code> · <code>azieltether reconcile</code></p>
+    <p>If two folders accidentally share the same last page, we do not pretend they are one folder. We write a second notebook that remembers both.</p>
+    <p>Commands: <code>azieltether doctor</code> · <code>azieltether announce</code> · <code>azieltether push</code> · <code>azieltether pull</code> · <code>azieltether reconcile</code> · <code>azieltether conflict-status</code> · <code>azieltether anchor</code></p>
   </div>
   <footer>Author Aziel Eliab · {PRODUCT} {VERSION} · loopback only · {NOTE_NOT_VPN}</footer>
 </body>

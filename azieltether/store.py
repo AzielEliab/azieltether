@@ -8,7 +8,14 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from azieltether.chain import ChainError, create_batch, verify_batch
-from azieltether.constants import HOME_ENV, PRODUCT, SCOPES, VERSION
+from azieltether.conflict import (
+    bodies_equal,
+    classify_conflict,
+    conflict_status as _conflict_status,
+    lattice_identity_conflict,
+    precedent_payload,
+)
+from azieltether.constants import HOME_ENV, PRECEDENT_SCOPE, PRODUCT, SCOPES, VERSION
 from azieltether.crypto import generate_keypair, node_id_from_pubkey
 
 
@@ -17,6 +24,8 @@ class Store:
         self.home = Path(home) if home is not None else default_home()
         self.home.mkdir(parents=True, exist_ok=True)
         (self.home / "batches").mkdir(exist_ok=True)
+        self.last_accept = "appended"
+        self.last_conflict: dict[str, Any] | None = None
 
     @property
     def node_path(self) -> Path:
@@ -115,20 +124,101 @@ class Store:
         return str(batches[-1].get("hash"))
 
     def accept_batch(self, batch: Mapping[str, Any]) -> dict[str, Any]:
+        """Append to chain A, or spawn chain B on same-hash / fork conflict.
+
+        Never silently merges a collision as if nothing happened. Duplicates
+        (identical hash and body) are idempotent sync, not a merge.
+        """
         verified = verify_batch(dict(batch))
         scope = str(verified["scope"])
         existing = self.load_batches(scope)
-        if any(item.get("hash") == verified["hash"] for item in existing):
+        if scope != PRECEDENT_SCOPE and lattice_identity_conflict(existing, verified):
+            self._spawn_precedent(
+                kind="accidental_identity",
+                scope_a=scope,
+                existing=existing[-1] if existing else None,
+                incoming=verified,
+            )
+            self.last_accept = "precedent"
             return verified
-        tip = existing[-1]["hash"] if existing else None
-        if existing and verified["prev_hash"] != tip:
+        kind = classify_conflict(existing, verified)
+        if kind == "unlinked":
             raise ChainError("batch prev_hash is not the current tip")
+        if kind in {"same_hash_collision", "fork"}:
+            match = next((item for item in existing if item.get("hash") == verified["hash"]), None)
+            if kind == "fork":
+                match = existing[-1] if existing else None
+            self._spawn_precedent(
+                kind=kind,
+                scope_a=scope,
+                existing=match,
+                incoming=verified,
+            )
+            self.last_accept = "precedent"
+            return verified
+        if any(item.get("hash") == verified["hash"] for item in existing):
+            stored = next(item for item in existing if item.get("hash") == verified["hash"])
+            if bodies_equal(stored, verified):
+                self.last_accept = "duplicate"
+                return stored
         existing.append(verified)
         self._write(
             self.batches_path(scope),
             {"product": PRODUCT, "scope": scope, "batches": existing},
         )
+        self.last_accept = "appended"
         return verified
+
+    def _spawn_precedent(
+        self,
+        *,
+        kind: str,
+        scope_a: str,
+        existing: Mapping[str, Any] | None,
+        incoming: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        node = self.load_node()
+        observed = [
+            {"node_id": node["node_id"], "role": "local-observer"},
+            *[
+                {"node_id": peer.get("node_id"), "endpoint": peer.get("endpoint"), "role": "peer"}
+                for peer in self.load_peers()
+                if peer.get("node_id")
+            ],
+        ]
+        payload = precedent_payload(
+            kind=kind,
+            scope_a=scope_a,
+            existing=existing,
+            incoming=incoming,
+            observed_by=observed,
+            chain_a_tip=self.tip_hash(scope_a),
+        )
+        # Precedent is chain B. Never rewrite A. Append-only on its own tip.
+        from azieltether.constants import GENESIS_PREV_HASH
+
+        prev = self.tip_hash(PRECEDENT_SCOPE) or GENESIS_PREV_HASH
+        receipt = create_batch(
+            private_b64=node["private"],
+            public_b64=node["pubkey"],
+            node_id=node["node_id"],
+            scope=PRECEDENT_SCOPE,
+            kind="conflict_receipt",
+            payload=payload,
+            prev_hash=prev,
+        )
+        chain = self.load_batches(PRECEDENT_SCOPE)
+        if not any(item.get("hash") == receipt["hash"] for item in chain):
+            chain.append(receipt)
+            self._write(
+                self.batches_path(PRECEDENT_SCOPE),
+                {"product": PRODUCT, "scope": PRECEDENT_SCOPE, "batches": chain},
+            )
+        self.last_conflict = receipt
+        return receipt
+
+    def conflict_status(self) -> dict[str, Any]:
+        return _conflict_status(self)
 
     def mint_batch(self, scope: str, kind: str, payload: Mapping[str, Any] | None = None) -> dict[str, Any]:
         node = self.load_node()
@@ -188,6 +278,7 @@ class Store:
         node = self.public_node()
         chain_ok, errors = self.chain_ok()
         by_scope = {scope: len(self.load_batches(scope)) for scope in SCOPES}
+        conflicts = self.conflict_status()
         return {
             "product": PRODUCT,
             "version": VERSION,
@@ -200,6 +291,8 @@ class Store:
             "batches": by_scope,
             "chain_ok": chain_ok,
             "chain_errors": errors,
+            "lattice_anchors": by_scope.get("lattice", 0),
+            "precedent_length": conflicts.get("precedent_length", 0),
         }
 
     def _read(self, path: Path) -> Any:

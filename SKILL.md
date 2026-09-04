@@ -65,12 +65,19 @@ Then open http://127.0.0.1:19740 (this computer only).
 | `azieltether push` | Send a signed hash-chained batch |
 | `azieltether pull` | Fetch batches |
 | `azieltether reconcile` | Drain backlog when central returns |
+| `azieltether anchor` | Post cross-product lattice anchors |
+| `azieltether lattice-status` | Rehydrate tips from the survival lattice |
+| `azieltether conflict-status` | Chain-B precedent; chain A is never rewritten |
 
 ## Scopes
 
 - `godlock` — receipts
 - `aziel-corpus` — public Corpus ingest envelopes only (never Aziel Library operator writes)
 - `aziel-runtime` — catalog events
+- `lattice` — survival anchors (any surviving product tip rehydrates GodLock and corpus)
+- `precedent` — dual-chain conflict receipts
+
+`azieltether.hooks.register(name, fn)` — SPRE/CLCE rescore on every upload/download via `on_transfer(event)`.
 
 Protocol: `docs/PROTOCOL.md`.
 

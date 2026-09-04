@@ -23,6 +23,8 @@ Python 3.10+. Core needs `cryptography` for Ed25519. pytest is the dev extra.
 1. **This is a content/work tether, not a VPN.** Do not add onion routing, SOCKS, or anonymity features.
 2. **Public HTTPS boards stay mesh-free.** Do not POST mesh batches at `godlock.uk` or the Corpus library UI.
 3. **The Worker is a bootstrap directory + holding pen**, not a full mesh. Do not claim otherwise.
+3a. **Lattice anchors** stay content/work bookmarks. Do not turn them into a VPN.
+3b. **Never rewrite chain A** on a same-hash or fork conflict. Append chain B (`precedent`) only.
 4. **`aziel-corpus` is public ingest envelopes only.** Refuse operator Aziel Library writes on the peer path.
 5. **Verify hash-chain + Ed25519 on accept.** Never store a batch that fails verify.
 6. **UI / serve bind loopback only** (`127.0.0.1`). Do not listen on `0.0.0.0`.
