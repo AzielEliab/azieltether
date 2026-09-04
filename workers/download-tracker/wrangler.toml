@@ -1,0 +1,19 @@
+name = "azieltether-download-tracker"
+main = "src/index.js"
+compatibility_date = "2026-09-04"
+workers_dev = true
+# Public in sibling AzielEliab *Lock Workers. First deploy must use this account.
+account_id = "ac575a9b822bea2bed97d0ab73aed238"
+
+# First deploy (cannot be done from this cloud agent — no vibelock-account token):
+#   npx wrangler kv namespace create AZIELTETHER_DOWNLOADS
+# Then set id = "<returned namespace id>" and run:
+#   npx wrangler deploy
+[[kv_namespaces]]
+binding = "DOWNLOADS"
+id = "00000000000000000000000000000000"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = ["/", "/download", "/download/*", "/stats", "/event", "/go", "/count", "/install.sh", "/v1", "/v1/*", "/openapi.json", "/ai", "/ai/*", "/mcp", "/mcp/", "/robots.txt", "/sitemap.xml", "/cite.json", "/llms.txt", "/ai.txt"]

@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "azieltether"
+version = "0.1.0"
+description = "Central × decentral node-mesh software tether. Prefer Worker when up; peer sync when down; reconcile on restore (AzielTether, Aziel Eliab)."
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [{name = "Aziel Eliab"}]
+requires-python = ">=3.10"
+keywords = [
+    "tether",
+    "node-mesh",
+    "hash-chain",
+    "dual-chain",
+    "lattice",
+    "prefer-central",
+    "peer-sync",
+    "reconcile",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security :: Cryptography",
+    "Intended Audience :: Developers",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4"]
+
+[project.scripts]
+azieltether = "azieltether.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/AzielEliab/azieltether"
+Download = "https://azieltether-download-tracker.vibelock.workers.dev/download"
+Issues = "https://github.com/AzielEliab/azieltether/issues"
+
+[tool.setuptools.packages.find]
+include = ["azieltether*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
