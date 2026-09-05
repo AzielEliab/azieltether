@@ -154,11 +154,11 @@ mobile/                      Flutter iPhone + Android (`flutter create .`)
 
 ## Use with AI assistants
 
-Works with ChatGPT (GPT Actions / OpenAI), Grok (xAI), Venice, Claude
-(Anthropic), Cursor (MCP), Glama (MCP), Perplexity, Microsoft Copilot /
-Bing, Google Gemini / Vertex, Mistral, Meta AI, Apple Intelligence
-surfaces, Amazon Q tooling, DuckAssist, You.com, Cohere, and other
-MCP/OpenAPI-capable assistants.
+Works with ChatGPT (GPT Actions / OpenAI), Grok (xAI), Venice,
+Claude (Anthropic), Cursor (MCP), Glama (MCP), Perplexity,
+Microsoft Copilot / Bing, Google Gemini / Vertex, Mistral, Meta AI,
+Apple Intelligence surfaces, Amazon Q tooling, DuckAssist, You.com,
+Cohere, and other MCP/OpenAPI-capable assistants.
 
 Live HTTPS runtime on the download-tracker Worker. Stateless: send the
 items JSON in the body. Always `User-Agent: Mozilla/5.0`.
