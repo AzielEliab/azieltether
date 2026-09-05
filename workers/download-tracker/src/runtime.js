@@ -70,7 +70,7 @@ curl -s -A 'Mozilla/5.0' -X POST https://azieltether-download-tracker.vibelock.w
 curl -s -A 'Mozilla/5.0' https://azieltether-download-tracker.vibelock.workers.dev/v1/skill
 \`\`\`
 
-Grok: import the catalog OpenAPI as a custom tool. ChatGPT: GPT Actions. Venice: HTTP tools.
+Works with ChatGPT (GPT Actions / OpenAI), Grok (xAI), Venice, Claude (Anthropic), Cursor (MCP), Glama (MCP), Perplexity, Microsoft Copilot / Bing, Google Gemini / Vertex, Mistral, Meta AI, Apple Intelligence surfaces, Amazon Q tooling, DuckAssist, You.com, Cohere, and other MCP/OpenAPI-capable assistants. Import OpenAPI as a custom tool, GPT Action, or HTTP tool; or connect MCP.
 
 ## Local (after one-click install)
 
@@ -359,7 +359,7 @@ function aiHtml(origin) {
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AzielTether — use with Grok, ChatGPT, Venice</title>
+<title>AzielTether — use with AI assistants</title>
 <style>
   :root { color-scheme: dark; }
   body { font: 16px/1.45 system-ui, sans-serif; max-width: 42rem; margin: 3rem auto; padding: 0 1.25rem; background: #0e1014; color: #e8eaef; }
@@ -374,7 +374,7 @@ function aiHtml(origin) {
   <p class="banner">${LIMITATION}</p>
   <p>OpenAPI: <a href="${origin}/openapi.json">${origin}/openapi.json</a></p>
   <p>MCP: POST <code>${origin}/mcp</code> · Catalog: <a href="${CATALOG}/">${CATALOG}</a></p>
-  <p>Grok: import OpenAPI as a custom tool. ChatGPT: GPT Actions. Venice: HTTP tools.</p>
+  <p>Works with ChatGPT (GPT Actions / OpenAI), Grok (xAI), Venice, Claude (Anthropic), Cursor (MCP), Glama (MCP), Perplexity, Microsoft Copilot / Bing, Google Gemini / Vertex, Mistral, Meta AI, Apple Intelligence surfaces, Amazon Q tooling, DuckAssist, You.com, Cohere, and other MCP/OpenAPI-capable assistants.</p>
   <p><a href="/">Downloads</a> · <a href="/v1/health">health</a> · <a href="/v1/skill">skill</a></p>
 </body>
 </html>`;
