@@ -55,7 +55,7 @@ def test_mesh_proxies_via_aziel_runtime() -> None:
     assert "AZIEL_RUNTIME" in WRANGLER
     assert "aziel-runtime" in WRANGLER
     assert "/v1/mesh" in WRANGLER
-    assert 'id = "00000000000000000000000000000000"' in WRANGLER
+    assert 'id = "a927325cb74540f3bfa587fbc60892e2"' in WRANGLER
 
 
 def test_index_routes_mesh_before_runtime_catchall() -> None:
