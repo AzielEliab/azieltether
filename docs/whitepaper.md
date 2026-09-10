@@ -65,6 +65,12 @@ same hash contract and are harvested, not rewritten.
 Hosted `/v1` is **stateless** and **zero-retention**. It acknowledges
 hashes. It does not store chains. It does not increment download KV.
 
+The Worker homepage shows a suite Live Nodes strip. `/v1/mesh/*` PROXY
+to aziel-runtime. Suite mesh default OFF. QNM rollup is
+live|locked|isolated counts only. No Node Gate. No auto-heal. Not an
+anonymity network. Anon-broadcast is not a publish path. AzielTether
+remains a software tether. Public HTTPS boards stay mesh-free.
+
 ## 4. Dual-chain
 
 If item A and item B share `prev_hash` and differ in `hash`, both stay.
