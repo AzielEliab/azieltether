@@ -2,8 +2,11 @@
  * AzielTether hosted runtime.
  * Stateless: client sends items / chain JSON. /v1 never touches DOWNLOADS KV.
  * Prefer-central / peer-sync-when-down / reconcile-on-restore / dual-chain / tips.
+ * /v1/mesh/* PROXY to aziel-runtime via AZIEL_RUNTIME (handled in index.js before this catch-all).
  * Author: Aziel Eliab.
  */
+import { meshOpenApiPaths, meshPointer } from "./mesh.js";
+
 const PRODUCT = "azieltether";
 const VERSION = "0.1.0";
 const AUTHOR = "Aziel Eliab";
@@ -18,7 +21,7 @@ const LIMITATION =
 
 const SKILL = `---
 name: AzielTether
-description: Use when preferring a central Worker, peer-syncing hash-chained work while it is down, reconciling on restore, or minting lattice tips across GodLock / Aziel Digital Library / product Workers. Software tether, not a VPN. Author Aziel Eliab.
+description: Use when preferring a central Worker, peer-syncing hash-chained work while it is down, reconciling on restore, or minting lattice tips across GodLock / Aziel Digital Library / product Workers. Dual surface: Worker /v1 + catalog MCP. This Worker /v1/mesh/* PROXY to aziel-runtime via AZIEL_RUNTIME. Suite mesh default OFF. QNM-BUILD-1.0 live|locked|isolated. No Node Gate. No auto-heal. Not anonymity. Software tether, not a VPN. Author Aziel Eliab.
 ---
 
 # AzielTether
@@ -41,6 +44,9 @@ Host: \`https://azieltether-download-tracker.vibelock.workers.dev\`
 |--------|------|------|
 | GET | \`/v1/health\` | Liveness. Does not increment downloads. |
 | GET | \`/v1/skill\` | This markdown. Does not increment downloads. |
+| GET | \`/v1/mesh\` | PROXY suite mesh status. Default OFF. QNM live|locked|isolated. Never enables. |
+| GET | \`/v1/mesh/nodes\` | PROXY Live Nodes roster (5-minute presence). |
+| POST | \`/v1/mesh/{enable,disable,join,heartbeat,leave,broadcast}\` | PROXY. Bearer required to enable. No auto-heal. Anon-broadcast is not a publish path. |
 | GET | \`/v1/example\` | Sample tether item. Does not increment downloads. |
 | POST | \`/v1/ingest\` | Accept one hash-chained item. Zero retention. |
 | POST | \`/v1/pulse\` | Prefer-central probe + unpublished-item preview. |
@@ -68,6 +74,7 @@ curl -s -A 'Mozilla/5.0' -X POST https://azieltether-download-tracker.vibelock.w
   -H 'content-type: application/json' \\
   -d '{"created_at":"2026-09-04T00:00:00Z","engine_version":"0.1.0","kind":"work","node_id":"local","payload":"desk closed","prev_hash":"0000000000000000000000000000000000000000000000000000000000000000","report_hash":"abc","scope":"azieltether","hash":"..."}'
 curl -s -A 'Mozilla/5.0' https://azieltether-download-tracker.vibelock.workers.dev/v1/skill
+curl -s -A 'Mozilla/5.0' https://azieltether-download-tracker.vibelock.workers.dev/v1/mesh
 \`\`\`
 
 Works with ChatGPT (GPT Actions / OpenAI), Grok (xAI), Venice, Claude (Anthropic), Cursor (MCP), Glama (MCP), Perplexity, Microsoft Copilot / Bing, Google Gemini / Vertex, Mistral, Meta AI, Apple Intelligence surfaces, Amazon Q tooling, DuckAssist, You.com, Cohere, and other MCP/OpenAPI-capable assistants. Import OpenAPI as a custom tool, GPT Action, or HTTP tool; or connect MCP.
@@ -99,7 +106,7 @@ Author: **Aziel Eliab**. Honest scope: software tether, not a VPN.
 - This Worker OpenAPI: https://azieltether-download-tracker.vibelock.workers.dev/openapi.json
 - Sample payload: \`GET https://azieltether-download-tracker.vibelock.workers.dev/v1/example\`
 
-Local UI: **Import JSON file** (\`type=file\`) and **Export JSON**. Then \`azieltether doctor\`.
+Local UI: **Import JSON file** (\`type=file\`) and **Export JSON**. Then \`azieltether doctor\`. Worker homepage Live Nodes strip polls \`GET /v1/mesh\` (default OFF).
 
 Counted download (gzip HTTP 200, no 302): https://azieltether-download-tracker.vibelock.workers.dev/download?asset=azieltether-0.1.0.tar.gz
 GitHub: https://github.com/AzielEliab/azieltether
@@ -267,12 +274,13 @@ function openapiSpec(origin) {
       title: "AzielTether runtime",
       version: VERSION,
       summary: MOTTO,
-      description: LIMITATION,
+      description: LIMITATION + " Suite mesh /v1/mesh/* PROXY to aziel-runtime (AZIEL_RUNTIME). Default OFF. QNM-BUILD-1.0 live|locked|isolated. No Node Gate. No auto-heal. Not anonymity. Aziel Eliab only.",
       license: { name: "Apache-2.0", identifier: "Apache-2.0" },
       contact: { name: AUTHOR, url: "https://github.com/AzielEliab/azieltether" },
     },
     servers: [{ url: origin }],
     paths: {
+      ...meshOpenApiPaths(),
       "/v1/health": {
         get: {
           operationId: "azieltether_health",
@@ -373,9 +381,10 @@ function aiHtml(origin) {
   <p class="motto">${MOTTO}</p>
   <p class="banner">${LIMITATION}</p>
   <p>OpenAPI: <a href="${origin}/openapi.json">${origin}/openapi.json</a></p>
-  <p>MCP: POST <code>${origin}/mcp</code> · Catalog: <a href="${CATALOG}/">${CATALOG}</a></p>
+  <p>MCP: POST <code>${origin}/mcp</code> · Catalog: <a href="${CATALOG}/">${CATALOG}</a> (catalog <code>mesh_*</code> + FragGate <code>slug=mesh</code>)</p>
+  <p>Suite mesh: <code>GET ${origin}/v1/mesh</code> PROXY to aziel-runtime. Default OFF. QNM-BUILD-1.0 live|locked|isolated. No Node Gate. No auto-heal. Not anonymity. Author: Aziel Eliab only.</p>
   <p>Works with ChatGPT (GPT Actions / OpenAI), Grok (xAI), Venice, Claude (Anthropic), Cursor (MCP), Glama (MCP), Perplexity, Microsoft Copilot / Bing, Google Gemini / Vertex, Mistral, Meta AI, Apple Intelligence surfaces, Amazon Q tooling, DuckAssist, You.com, Cohere, and other MCP/OpenAPI-capable assistants.</p>
-  <p><a href="/">Downloads</a> · <a href="/v1/health">health</a> · <a href="/v1/skill">skill</a></p>
+  <p><a href="/">Downloads</a> · <a href="/v1/health">health</a> · <a href="/v1/mesh">/v1/mesh</a> · <a href="/v1/skill">skill</a></p>
 </body>
 </html>`;
 }
@@ -461,6 +470,7 @@ async function handleMcp(request) {
 
 export async function handleRuntimeApi(request, url) {
   const path = url.pathname.replace(/\/+$/, "") || "/";
+  if (path === "/v1/mesh" || path.startsWith("/v1/mesh/")) return null;
   if (path === "/mcp") return handleMcp(request);
   if (path === "/v1/skill" && request.method === "GET") {
     return new Response(SKILL, {
@@ -488,6 +498,7 @@ export async function handleRuntimeApi(request, url) {
       mesh_on_public_boards: false,
       limitation: LIMITATION,
       catalog: CATALOG,
+      mesh: meshPointer(),
     });
   }
   if ((path === "/v1/example" || path === "/v1/example/") && request.method === "GET") {
@@ -623,7 +634,7 @@ export async function handleRuntimeApi(request, url) {
     return json(
       {
         error: "not found",
-        hint: "GET /v1/health  GET /v1/skill  POST /v1/ingest  POST /v1/pulse  POST /v1/reconcile  POST /v1/dual-chain  POST /v1/tip  POST /v1/verify",
+        hint: "GET /v1/health  GET /v1/skill  GET /v1/mesh  POST /v1/ingest  POST /v1/pulse  POST /v1/reconcile  POST /v1/dual-chain  POST /v1/tip  POST /v1/verify",
         limitation: LIMITATION,
       },
       404,
