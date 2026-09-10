@@ -70,7 +70,7 @@ Direct tarball (also counted):
 - Live count JSON: [https://azieltether-download-tracker.vibelock.workers.dev/count](https://azieltether-download-tracker.vibelock.workers.dev/count)
 - Stats: [https://azieltether-download-tracker.vibelock.workers.dev/stats](https://azieltether-download-tracker.vibelock.workers.dev/stats)
 - Skill: [https://azieltether-download-tracker.vibelock.workers.dev/v1/skill](https://azieltether-download-tracker.vibelock.workers.dev/v1/skill)
-- Suite mesh proxy: [https://azieltether-download-tracker.vibelock.workers.dev/v1/mesh](https://azieltether-download-tracker.vibelock.workers.dev/v1/mesh) — default OFF; QNM live / locked / isolated
+- Suite mesh proxy: [https://azieltether-download-tracker.vibelock.workers.dev/v1/mesh](https://azieltether-download-tracker.vibelock.workers.dev/v1/mesh) — default OFF; QNM live / locked / isolated; QNS-CD-1.0 hub cite (photon QNS1 packet transfer; no public qnsd proxy)
 - OpenAPI: [https://azieltether-download-tracker.vibelock.workers.dev/openapi.json](https://azieltether-download-tracker.vibelock.workers.dev/openapi.json)
 - GitHub: [https://github.com/AzielEliab/azieltether](https://github.com/AzielEliab/azieltether)
 
@@ -168,7 +168,7 @@ items JSON in the body. Always `User-Agent: Mozilla/5.0`.
 https://azieltether-download-tracker.vibelock.workers.dev/openapi.json
 ```
 
-MCP catalog (ships separately): `https://aziel-runtime.vibelock.workers.dev/mcp`. Suite mesh `/v1/mesh/*` PROXY via `AZIEL_RUNTIME` (default OFF; QNM-BUILD-1.0 live|locked|isolated; no Node Gate). Catalog MCP `mesh_*` + FragGate `slug=mesh`.
+MCP catalog (ships separately): `https://aziel-runtime.vibelock.workers.dev/mcp`. Suite mesh `/v1/mesh/*` PROXY via `AZIEL_RUNTIME` (default OFF; QNM-BUILD-1.0 live|locked|isolated; no Node Gate). **QNS-CD-1.0** (photon QNS1 packet transfer) is a hub cite / Worker mesh cross-map only — local `qnsd` lives in [qnm-node](https://github.com/AzielEliab/qnm-node); runtime cites + catalog field live in [aziel-runtime](https://github.com/AzielEliab/aziel-runtime); pair custody is [AZInterface](https://github.com/AzielEliab/azinterface). Not a Softwares-tab product. No public qnsd proxy. Catalog MCP `mesh_*` + FragGate `slug=mesh`.
 
 After first deploy, register slug `azieltether` on aziel-runtime so
 `/p/azieltether/{op}` proxies here.

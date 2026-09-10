@@ -1,6 +1,6 @@
 ---
 name: AzielTether
-description: Use when preferring a central Worker, peer-syncing hash-chained work while it is down, reconciling on restore, or minting lattice tips across GodLock / Aziel Digital Library / product Workers. Dual surface: Worker /v1 + catalog MCP. This Worker /v1/mesh/* PROXY to aziel-runtime via AZIEL_RUNTIME. Suite mesh default OFF. QNM-BUILD-1.0 live|locked|isolated. No Node Gate. No auto-heal. Not anonymity. Software tether, not a VPN. Author Aziel Eliab.
+description: Use when preferring a central Worker, peer-syncing hash-chained work while it is down, reconciling on restore, or minting lattice tips across GodLock / Aziel Digital Library / product Workers. Dual surface: Worker /v1 + catalog MCP. This Worker /v1/mesh/* PROXY to aziel-runtime via AZIEL_RUNTIME. Suite mesh default OFF. QNM-BUILD-1.0 live|locked|isolated. QNS-CD-1.0 photon QNS1 packet transfer is a hub cite / Worker mesh cross-map only (local qnsd in qnm-node; no public qnsd proxy; not a Softwares-tab product). No Node Gate. No auto-heal. Not anonymity. Software tether, not a VPN. Author Aziel Eliab.
 ---
 
 # AzielTether
@@ -23,8 +23,8 @@ Host: `https://azieltether-download-tracker.vibelock.workers.dev`
 |--------|------|------|
 | GET | `/v1/health` | Liveness. Does not increment downloads. |
 | GET | `/v1/skill` | This markdown. Does not increment downloads. |
-| GET | `/v1/mesh` | PROXY suite mesh status. Default OFF. QNM live|locked|isolated. Never enables. |
-| GET | `/v1/mesh/nodes` | PROXY Live Nodes roster (5-minute presence). |
+| GET | `/v1/mesh` | PROXY suite mesh status. Default OFF. QNM live|locked|isolated. QNS-CD-1.0 cross-map cite. Never enables. |
+| GET | `/v1/mesh/nodes` | PROXY Live Nodes roster (5-minute presence) plus QNS-CD-1.0 cross-map. |
 | POST | `/v1/mesh/{enable,disable,join,heartbeat,leave,broadcast}` | PROXY. Bearer required to enable. No auto-heal. Anon-broadcast is not a publish path. |
 | GET | `/v1/example` | Sample tether item. Does not increment downloads. |
 | POST | `/v1/ingest` | Accept one hash-chained item. Zero retention. |
@@ -85,7 +85,7 @@ Author: **Aziel Eliab**. Honest scope: software tether, not a VPN.
 - This Worker OpenAPI: https://azieltether-download-tracker.vibelock.workers.dev/openapi.json
 - Sample payload: `GET https://azieltether-download-tracker.vibelock.workers.dev/v1/example`
 
-Local UI: **Import JSON file** (`type=file`) and **Export JSON**. Then `azieltether doctor`. Worker homepage Live Nodes strip polls `GET /v1/mesh` (default OFF).
+Local UI: **Import JSON file** (`type=file`) and **Export JSON**. Then `azieltether doctor`. Worker homepage Live Nodes strip polls `GET /v1/mesh` (default OFF). Mesh status / Live Nodes JSON carries the **QNS-CD-1.0** cross-map (photon QNS1 packet transfer): hub cite only; local `qnsd` is [qnm-node](https://github.com/AzielEliab/qnm-node); runtime cites live in [aziel-runtime](https://github.com/AzielEliab/aziel-runtime); pair custody is [AZInterface](https://github.com/AzielEliab/azinterface). Not a Softwares-tab product. No public qnsd proxy. No Node Gate.
 
 Counted download (gzip HTTP 200, no 302): https://azieltether-download-tracker.vibelock.workers.dev/download?asset=azieltether-0.1.0.tar.gz
 GitHub: https://github.com/AzielEliab/azieltether

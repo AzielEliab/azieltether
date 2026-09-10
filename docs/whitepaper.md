@@ -67,9 +67,12 @@ hashes. It does not store chains. It does not increment download KV.
 
 The Worker homepage shows a suite Live Nodes strip. `/v1/mesh/*` PROXY
 to aziel-runtime. Suite mesh default OFF. QNM rollup is
-live|locked|isolated counts only. No Node Gate. No auto-heal. Not an
-anonymity network. Anon-broadcast is not a publish path. AzielTether
-remains a software tether. Public HTTPS boards stay mesh-free.
+live|locked|isolated counts only. **QNS-CD-1.0** (photon QNS1 packet
+transfer) is a hub cite / Worker mesh cross-map only — local `qnsd` is
+qnm-node, not hosted here. No public qnsd proxy. No Node Gate. No
+auto-heal. Not an anonymity network. Anon-broadcast is not a publish
+path. AzielTether remains a software tether. Public HTTPS boards stay
+mesh-free.
 
 ## 4. Dual-chain
 
