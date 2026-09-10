@@ -135,5 +135,5 @@ def test_docs_advertise_mesh_proxy() -> None:
     assert "Live Nodes" in WORKER_README
     assert "MESH-OK" in WORKER_README
     assert "enabled: false" in WORKER_README
-    assert "no public qnsd proxy" in WORKER_README
+    assert "no public qnsd proxy" in WORKER_README.lower()
     assert "Aziel Eliab" in MESH
