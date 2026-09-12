@@ -375,8 +375,11 @@ function aiHtml(origin) {
   a { color: #c9d4ff; }
   .motto { color: #9aa3b2; font-style: italic; }
   .banner { border: 1px solid #5c4a1a; background: #241c0d; color: #f0d78c; padding: .85rem 1rem; border-radius: 8px; }
+  .brandrow { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; }
+  .brandmark { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; flex: 0 0 auto; box-shadow: 0 0 0 1px #d4af3733; }
 </style>
 <body>
+  <div class="brandrow"><img class="brandmark" src="/sigil.png" width="40" height="40" alt="" decoding="async"></div>
   <h1>AzielTether live API</h1>
   <p class="motto">${MOTTO}</p>
   <p class="banner">${LIMITATION}</p>
