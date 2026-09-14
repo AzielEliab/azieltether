@@ -112,8 +112,11 @@ PAGE = r"""<!DOCTYPE html>
       only; payload is a receiver pull on the 777s gate. COLD-COPY SURVIVAL:
       multiply sealed copies; no live body sync. REHEAL from own last
       good tip plus a trusted pull, or phoenix-WAIT — no neighbor
-      vote-to-fix. COLD-SHELF TETHER: prefer Worker when up; last local
-      shelf when down; hash reconcile on restore. Dual-chain keeps both
+      vote-to-fix. COLD-SHELF TETHER: prefer Worker when up (Plane A);
+      last local Plane C when down; hash reconcile on restore — never
+      rewrite. Plane B SLOT until hash-verify on Codeberg / archive.org
+      / GitFlic (Zenodo dead; no invented DOI). USB tip-pack LIVE after
+      sha256sum -c attest. Dual-chain keeps both
       children of the same prev_hash. Public boards stay mesh-free. Bound
       to 127.0.0.1.
     </p>
@@ -153,12 +156,18 @@ PAGE = r"""<!DOCTYPE html>
   </fieldset>
 
   <fieldset>
-    <legend>Cold-shelf URL (GitLab / Codeberg / Zenodo / local path)</legend>
-    <input id="shelf-url" type="text" placeholder="/path/to/manifest.json or https://…/raw/…/manifest.json">
-    <label for="shelf-sha">Expected SHA-256 (required for remote; refuse on mismatch)</label>
+    <legend>Cold-shelf URL (Codeberg / archive.org / GitFlic / local path)</legend>
+    <input id="shelf-url" type="text" placeholder="https://codeberg.org/… or https://archive.org/… or local path">
+    <label for="shelf-sha">Expected SHA-256 (required for Plane B LIVE; refuse on mismatch)</label>
     <input id="shelf-sha" type="text" placeholder="64 lowercase hex">
+    <p class="lede">Zenodo is IP-banned. Do not invent a DOI. USB tip-pack is not LIVE until sha256sum -c then <span class="hash">azieltether shelf attest</span>.</p>
     <div class="actions" style="margin-top:0.8rem">
       <button type="button" class="ghost" id="shelf-pull">Pull + verify</button>
+    </div>
+    <label for="shelf-usb">USB tip-pack path (after sha256sum -c)</label>
+    <input id="shelf-usb" type="text" placeholder="/media/usb/aziel-shelf">
+    <div class="actions" style="margin-top:0.8rem">
+      <button type="button" class="ghost" id="shelf-attest">Operator attest</button>
     </div>
   </fieldset>
 
@@ -221,9 +230,15 @@ PAGE = r"""<!DOCTYPE html>
   $("shelf-sync").onclick = async () => draw(await post("/api/shelf-sync", {
     url: $("shelf-url").value,
     sha256: $("shelf-sha").value,
+    plane_b_url: $("shelf-url").value,
   }));
   $("shelf-pull").onclick = async () => draw(await post("/api/shelf-pull", {
     url: $("shelf-url").value,
+    sha256: $("shelf-sha").value,
+    plane_b_url: $("shelf-url").value,
+  }));
+  $("shelf-attest").onclick = async () => draw(await post("/api/shelf-attest", {
+    src: $("shelf-usb").value,
     sha256: $("shelf-sha").value,
   }));
   $("peer-add").onclick = async () => draw(await post("/api/peer-sync", { peer: $("peer").value }));
@@ -363,15 +378,25 @@ class Handler(BaseHTTPRequestHandler):
             )
             return
         if path == "/api/shelf":
-            from azieltether.shelf import law_card, load_last_shelf
+            from azieltether.shelf import law_card, load_last_shelf, plane_a_card, plane_b_status, plane_c_card
 
             last = load_last_shelf(self._store())
+            stored = self._store().plane_b()
             self._json(
                 200,
                 {
                     "ok": True,
                     "author": "Aziel Eliab",
                     "shelf": law_card(),
+                    "planes": {
+                        "A": plane_a_card(),
+                        "B": plane_b_status(
+                            url=stored.get("url") or None,
+                            sha256=stored.get("sha256"),
+                            verified=bool(stored.get("verified")),
+                        ),
+                        "C": plane_c_card(self._store()),
+                    },
                     "last": last,
                 },
             )
@@ -479,6 +504,23 @@ class Handler(BaseHTTPRequestHandler):
                     incoming=body,
                 )
                 rec.update(_snapshot(store, rec.get("code", "shelf-sync")))
+                self._json(200 if rec.get("ok") else 400, rec)
+                return
+            if path == "/api/shelf-attest":
+                from azieltether.shelf import attest_usb
+
+                src = str(body.get("src") or "").strip()
+                if not src:
+                    self._json(400, {"ok": False, "code": "CNS-OPERATOR-ATTEST", "error": "attest needs src"})
+                    return
+                rec = attest_usb(
+                    store,
+                    src,
+                    expected_sha256=str(body.get("sha256") or "").strip() or None,
+                    pack_sha256=str(body.get("pack_sha256") or "").strip() or None,
+                    lockset_tip=str(body.get("lockset_tip") or "").strip() or None,
+                )
+                rec.update(_snapshot(store, rec.get("code", "shelf-attest")))
                 self._json(200 if rec.get("ok") else 400, rec)
                 return
             if path == "/api/shelf-pull":

@@ -41,10 +41,13 @@ Python 3.10+. Core is stdlib only. pytest is the dev extra.
 10. **REHEAL.** Own last good tip + verified trusted pull or
     phoenix-WAIT. No neighbor vote-to-fix. Chatter is
     live/locked/isolated/tip-hash only.
-11. **COLD-SHELF TETHER.** Last local shelf when the Worker is dead.
-    Hash reconcile on restore. SHA-256 manifest verify. No rewrite
-    key. No lie-to-survive. Do not claim live multi-homed DNS or
-    invent IPFS CIDs. Person @id stays
+11. **COLD-SHELF TETHER.** Worker-up pulls Plane A. Worker-down serves
+    last Plane C local shelf. Restore is hash reconcile — never rewrite.
+    Plane B SLOT until hash-verify on Codeberg / archive.org / GitFlic
+    (not Zenodo; do not invent a DOI). Plane C USB tip-pack LIVE only
+    after `sha256sum -c` plus operator attest (`CNS-OPERATOR-ATTEST`
+    until then). No rewrite key. No lie-to-survive. Do not claim live
+    multi-homed DNS or invent IPFS CIDs. Person @id stays
     https://www.azieleliab.com/#aziel.
 
 ## Where to change things

@@ -106,6 +106,12 @@ def test_split_wires_and_cold_copy_survival_on_worker() -> None:
     assert "export function refuseLieToSurvive" in WIRES
     assert "SHELF-SLOT-IPFS" in WIRES
     assert "SHELF-SLOT-ZENODO-DOI" in WIRES
+    assert "SHELF-SLOT-ALT-SHELF" in WIRES
+    assert "CNS-OPERATOR-ATTEST" in WIRES
+    assert "codeberg.org" in WIRES
+    assert "gitflic.ru" in WIRES
+    assert "c831429befc221bd41caeb0a6d1c5361602db5684abab7af6d39714084b6b245" in WIRES
+    assert "b549362c0736ddb54ddc488812327c464e0da1167281f92fd1a4263eedf5df37" in WIRES
     assert "SHELF-REWRITE-REFUSED" in WIRES
     assert "SHELF-LIE-REFUSED" in WIRES
     assert "https://www.azieleliab.com/#aziel" in WIRES
@@ -119,6 +125,10 @@ def test_split_wires_and_cold_copy_survival_on_worker() -> None:
     assert "COLD-SHELF-TETHER-1.0" in SKILL
     assert "CROSS-NETWORK-SURVIVAL" in (ROOT / "docs/COLD-SHELF-TETHER.md").read_text(encoding="utf-8")
     assert "NO-LIE" in (ROOT / "docs/COLD-SHELF-TETHER.md").read_text(encoding="utf-8")
+    assert "COLD-MULTI-SHELF" in (ROOT / "docs/COLD-SHELF-TETHER.md").read_text(encoding="utf-8")
+    assert "CNS-OPERATOR-ATTEST" in (ROOT / "docs/COLD-SHELF-TETHER.md").read_text(encoding="utf-8")
+    assert "Zenodo is IP-banned" in (ROOT / "docs/COLD-SHELF-TETHER.md").read_text(encoding="utf-8")
+    assert "Service→Clarity→Peace" in (ROOT / "docs/COLD-SHELF-TETHER.md").read_text(encoding="utf-8")
     assert "COLD-SHELF-TETHER-1.0" in WORKER_README
 
 

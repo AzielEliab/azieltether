@@ -57,7 +57,7 @@ export const REHEAL_LAW =
   "REHEAL. Heal from your own last good tip plus a verified trusted pull, or phoenix-WAIT. No neighbor vote-to-fix. Allowed chatter is live / locked / isolated / tip-hash only. Author: Aziel Eliab only.";
 
 export const SHELF_LAW =
-  "COLD-SHELF TETHER. Prefer Worker when up: probe + ingest-as-receipt, then seal tip+receipts locally. When Worker is dead, serve the last local cold-shelf. On restore, reconcile by hash — never rewrite. Fetch/verify a SHA-256 manifest from operator URLs. Hash mismatch refuses. No rewrite key. No lie-to-survive. Multi-homed DNS, IPFS CIDs, auto-publish, anycast, and AZ Generator are MOCK/SLOT. Sister: aziel-corpus COLD-MULTI-SHELF-1.0. Person @id https://www.azieleliab.com/#aziel. Author: Aziel Eliab only.";
+  "COLD-SHELF TETHER. Prefer Worker when up: probe + ingest-as-receipt, then seal tip+receipts locally. When Worker is dead, serve the last local cold-shelf. On restore, reconcile by hash — never rewrite. Fetch/verify a SHA-256 manifest from operator URLs. Hash mismatch refuses. No rewrite key. No lie-to-survive. Multi-homed DNS, IPFS CIDs, auto-publish, anycast, and AZ Generator are MOCK/SLOT. Plane B SLOT until hash-verify on Codeberg / archive.org / GitFlic. Zenodo is IP-banned — do not invent a DOI. Plane C USB tip-pack LIVE only after sha256sum -c plus operator attest (CNS-OPERATOR-ATTEST until then). Sister: aziel-corpus COLD-MULTI-SHELF-1.0. Lamb Lens: Service→Clarity→Peace. Person @id https://www.azieleliab.com/#aziel. Author: Aziel Eliab only.";
 
 export const SHELF_SLOTS = Object.freeze({
   multihome_dns: "SHELF-SLOT-MULTIHOME-DNS",
@@ -66,8 +66,16 @@ export const SHELF_SLOTS = Object.freeze({
   anycast: "SHELF-SLOT-ANYCAST",
   az_generator: "SHELF-SLOT-AZ-GENERATOR",
   zenodo_doi: "SHELF-SLOT-ZENODO-DOI",
+  alt_shelf: "SHELF-SLOT-ALT-SHELF",
   forge_publish: "SHELF-SLOT-FORGE-PUBLISH",
 });
+
+export const OPERATOR_DATE = "2026-09-14";
+export const OPERATOR_LOCKSET_TIP = "c831429befc221bd41caeb0a6d1c5361602db5684abab7af6d39714084b6b245";
+export const OPERATOR_PACK_SHA256 = "b549362c0736ddb54ddc488812327c464e0da1167281f92fd1a4263eedf5df37";
+export const CNS_OPERATOR_ATTEST = "CNS-OPERATOR-ATTEST";
+export const PLANE_B_HOSTS = Object.freeze(["codeberg.org", "archive.org", "gitflic.ru"]);
+export const LAMB_LENS = "Service→Clarity→Peace";
 
 function hex64(name, value) {
   const text = String(value || "").trim().toLowerCase();
@@ -423,11 +431,41 @@ export function shelfCard() {
     auto_publish: false,
     anycast: false,
     az_generator: false,
+    zenodo_dead: true,
+    invented_doi: false,
     planes: {
       A: { plane: "A", hubs: 4, same_tunnel: true, survives_cf_yank: false, live: true },
-      B: { plane: "B", name: "zenodo-tip-pack", live: false, slot: "SHELF-SLOT-ZENODO-DOI" },
-      C: { plane: "C", name: "usb-local-cold-copy", live: true, survives_cf_yank: true },
+      B: {
+        plane: "B",
+        name: "alt-independent-shelves",
+        live: false,
+        slot: "SHELF-SLOT-ALT-SHELF",
+        shelves: PLANE_B_HOSTS.slice(),
+        zenodo_dead: true,
+        note: "SLOT until hash-verify on Codeberg / archive.org / GitFlic. Zenodo IP-banned. No invented DOI.",
+      },
+      C: {
+        plane: "C",
+        name: "usb-local-cold-copy",
+        live: true,
+        local_last_seal: true,
+        usb_tip_pack_live: false,
+        survives_cf_yank: true,
+        attest: CNS_OPERATOR_ATTEST,
+        tip_ref: {
+          date: OPERATOR_DATE,
+          lockset_tip: OPERATOR_LOCKSET_TIP,
+          pack_sha256: OPERATOR_PACK_SHA256,
+        },
+        note: "Worker-down serves last local seal. USB tip-pack LIVE after sha256sum -c + operator attest.",
+      },
     },
+    tip_ref: {
+      date: OPERATOR_DATE,
+      lockset_tip: OPERATOR_LOCKSET_TIP,
+      pack_sha256: OPERATOR_PACK_SHA256,
+    },
+    lamb_lens: LAMB_LENS,
     slots: Object.fromEntries(Object.entries(SHELF_SLOTS).map(([k, v]) => [k, { code: v, live: false }])),
     law: SHELF_LAW,
   };
@@ -435,7 +473,19 @@ export function shelfCard() {
 
 export function refuseShelfSlot(name) {
   const key = String(name || "").trim().toLowerCase().replace(/-/g, "_").replace(/ /g, "_");
-  const aliases = { dns: "multihome_dns", ipfs_cid: "ipfs", cid: "ipfs", publish: "auto_publish", azgenerator: "az_generator" };
+  const aliases = {
+    dns: "multihome_dns",
+    ipfs_cid: "ipfs",
+    cid: "ipfs",
+    publish: "auto_publish",
+    azgenerator: "az_generator",
+    zenodo: "zenodo_doi",
+    doi: "zenodo_doi",
+    plane_b: "alt_shelf",
+    alt: "alt_shelf",
+    gitflic: "alt_shelf",
+    archive: "alt_shelf",
+  };
   const slot = aliases[key] || key;
   const code = SHELF_SLOTS[slot] || "SHELF-SLOT-UNKNOWN";
   return {
@@ -471,6 +521,28 @@ export function refuseRewriteKey(body) {
 
 export function refuseLieToSurvive(body) {
   const data = body && typeof body === "object" ? body : {};
+  if (data.zenodo_live || data.doi_live || data.invented_doi) {
+    return {
+      ok: false,
+      code: "SHELF-DOI-REFUSED",
+      applied: false,
+      author: WIRES_AUTHOR,
+      law: NO_LIE_SPEC,
+      zenodo_dead: true,
+      note: "Zenodo is IP-banned. Do not invent a DOI.",
+    };
+  }
+  if (data.usb_live || data.usb_tip_pack_live) {
+    return {
+      ok: false,
+      code: CNS_OPERATOR_ATTEST,
+      applied: false,
+      author: WIRES_AUTHOR,
+      law: CROSS_NETWORK_SPEC,
+      usb_tip_pack_live: false,
+      note: "USB tip-pack is not LIVE until the operator attests after sha256sum -c. Worker is zero-retention.",
+    };
+  }
   if (data.rewrite_to_survive || data.worker_holds_chain || data.ipfs_live || data.multihome_dns || data.anycast) {
     return {
       ok: false,

@@ -5,16 +5,19 @@ Worker is dead, serve the last local cold-shelf. On restore, reconcile
 by hash. Never rewrite history. Never lie to survive.
 
 The Worker is zero-retention. Durable tip/receipts live on the local
-shelf and on operator-configured non-Cloudflare URLs (GitLab/Codeberg
-raw, Zenodo file, local path, USB). Sister work is aziel-corpus
-COLD-MULTI-SHELF-1.0 — cite the same lockset tip hashes. Do not fork
-Person @id https://www.azieleliab.com/#aziel.
+shelf and on operator-configured non-Cloudflare URLs (Codeberg raw,
+archive.org, GitFlic, local path, USB). Zenodo is IP-banned — do not
+invent a DOI. Sister work is aziel-corpus COLD-MULTI-SHELF-1.0 — cite
+the same lockset tip hashes. Do not fork Person @id
+https://www.azieleliab.com/#aziel.
 
 MOCK/SLOT (not live): multi-homed DNS, invented IPFS CIDs, auto-publish
-to those hosts, anycast, AZ Generator. Each has a refuse code.
+to those hosts, anycast, AZ Generator, Zenodo DOI, Plane B until
+hash-verify on alternate shelves. Each has a refuse code.
 
 Laws: CROSS-NETWORK-SURVIVAL-1.0, NO-LIE-NO-REWRITE-1.0,
-ingest-as-receipt, RE-EXPAND-FROM-ARCHIVE, REHEAL, NO-FAN.
+COLD-MULTI-SHELF-1.0, ingest-as-receipt, RE-EXPAND-FROM-ARCHIVE,
+REHEAL, NO-FAN. Lamb Lens: Service→Clarity→Peace.
 
 Author: Aziel Eliab only.
 """
@@ -39,12 +42,21 @@ SHELF_SPEC = "COLD-SHELF-TETHER-1.0"
 SISTER_SPEC = "COLD-MULTI-SHELF-1.0"
 CROSS_NETWORK_SPEC = "CROSS-NETWORK-SURVIVAL-1.0"
 NO_LIE_SPEC = "NO-LIE-NO-REWRITE-1.0"
+CNS_OPERATOR_ATTEST = "CNS-OPERATOR-ATTEST"
 SHELF_AUTHOR = "Aziel Eliab"
 PERSON_ID = "https://www.azieleliab.com/#aziel"
 PRODUCT = "azieltether"
 SHELF_URLS_ENV = "AZIELTETHER_SHELF_URLS"
 ZENODO_DOI_ENV = "AZIELTETHER_ZENODO_DOI"
 ZENODO_URL_ENV = "AZIELTETHER_ZENODO_URL"
+PLANE_B_URL_ENV = "AZIELTETHER_PLANE_B_URL"
+LAMB_LENS = "Service→Clarity→Peace"
+
+# Operator 2026-09-14 tip-pack cite. Do not invent a DOI.
+OPERATOR_DATE = "2026-09-14"
+OPERATOR_LOCKSET_TIP = "c831429befc221bd41caeb0a6d1c5361602db5684abab7af6d39714084b6b245"
+OPERATOR_PACK_SHA256 = "b549362c0736ddb54ddc488812327c464e0da1167281f92fd1a4263eedf5df37"
+PLANE_B_HOSTS = ("codeberg.org", "archive.org", "gitflic.ru")
 
 # Operator planes. A is the same Cloudflare tunnel — it does not survive a CF yank.
 PLANE_A = "A"
@@ -87,6 +99,8 @@ REAL = (
     "no_fan_unverified",
     "plane_a_probe",
     "plane_c_usb_local",
+    "plane_b_alt_shelf_hash_verify",
+    "plane_c_operator_attest",
 )
 
 SLOTS = {
@@ -96,6 +110,7 @@ SLOTS = {
     "anycast": "SHELF-SLOT-ANYCAST",
     "az_generator": "SHELF-SLOT-AZ-GENERATOR",
     "zenodo_doi": "SHELF-SLOT-ZENODO-DOI",
+    "alt_shelf": "SHELF-SLOT-ALT-SHELF",
     "forge_publish": "SHELF-SLOT-FORGE-PUBLISH",
 }
 
@@ -108,22 +123,26 @@ LAWS = (
     "ingest-as-receipt",
     "RE-EXPAND-FROM-ARCHIVE",
     "NO-FAN",
+    SISTER_SPEC,
 )
 
 LAW = (
     "COLD-SHELF TETHER. Prefer Worker when up: probe + ingest-as-receipt, "
     "then seal tip+receipts locally. When Worker is dead, serve the last "
     "local cold-shelf. On restore, reconcile by hash — never rewrite. "
-    "Fetch/verify a SHA-256 manifest from operator URLs (GitLab/Codeberg "
-    "raw, Zenodo file, local path). Hash mismatch refuses. No rewrite key. "
-    "No lie-to-survive. Multi-homed DNS, IPFS CIDs, auto-publish, anycast, "
-    "and AZ Generator are MOCK/SLOT. Operator planes: A = four CF hubs "
-    "on the same tunnel (does not survive a CF yank); B = Zenodo "
-    "tip-pack SLOT until a real DOI is set; C = USB/local cold copy. "
-    "Worker-up pulls A; Worker-down serves last C; restore reconciles "
-    "by hash. Sister: aziel-corpus COLD-MULTI-SHELF-1.0 — cite the same "
-    "lockset tip hashes. Person @id https://www.azieleliab.com/#aziel. "
-    "Author: Aziel Eliab only."
+    "Fetch/verify a SHA-256 manifest from operator URLs (Codeberg raw, "
+    "archive.org, GitFlic, local path). Hash mismatch refuses. No rewrite "
+    "key. No lie-to-survive. Multi-homed DNS, IPFS CIDs, auto-publish, "
+    "anycast, and AZ Generator are MOCK/SLOT. Operator planes: A = four "
+    "CF hubs on the same tunnel (does not survive a CF yank); B = "
+    "independent shelves (Codeberg / archive.org / GitFlic) SLOT until "
+    "hash-verify — Zenodo is IP-banned, do not invent a DOI; C = USB/"
+    "local cold copy. USB tip-pack goes LIVE only after sha256sum -c "
+    "plus operator attest (CNS-OPERATOR-ATTEST until then). Worker-up "
+    "pulls A; Worker-down serves last C; restore reconciles by hash — "
+    "never rewrite. Sister: aziel-corpus COLD-MULTI-SHELF-1.0 — cite "
+    "the same lockset tip hashes. Lamb Lens: Service→Clarity→Peace. "
+    "Person @id https://www.azieleliab.com/#aziel. Author: Aziel Eliab only."
 )
 
 
@@ -168,7 +187,12 @@ def refuse_slot(name: str) -> dict[str, Any]:
         "az_gen": "az_generator",
         "zenodo": "zenodo_doi",
         "doi": "zenodo_doi",
-        "plane_b": "zenodo_doi",
+        "plane_b": "alt_shelf",
+        "alt": "alt_shelf",
+        "alternate": "alt_shelf",
+        "gitflic": "alt_shelf",
+        "archive": "alt_shelf",
+        "archive_org": "alt_shelf",
         "forge": "forge_publish",
         "gitlab": "forge_publish",
         "codeberg": "forge_publish",
@@ -184,10 +208,11 @@ def refuse_slot(name: str) -> dict[str, Any]:
     notes = {
         "multihome_dns": "Live multi-homed DNS is not implemented. Do not claim it.",
         "ipfs": "IPFS CIDs are not implemented. Do not invent a CID.",
-        "auto_publish": "Auto-publish to GitLab/Codeberg/Zenodo is not implemented. Operator copies files.",
+        "auto_publish": "Auto-publish to Codeberg/archive.org/GitFlic is not implemented. Operator copies files.",
         "anycast": "Anycast / geo-DNS is not implemented.",
         "az_generator": "AZ Generator is MirageGrid-only. AzielTether refuses the call.",
-        "zenodo_doi": "Plane B Zenodo tip-pack is SLOT until a real DOI is set. No invented DOIs.",
+        "zenodo_doi": "Zenodo is IP-banned. Do not invent a DOI. Plane B uses Codeberg / archive.org / GitFlic after hash-verify.",
+        "alt_shelf": "Plane B is SLOT until SHA-256 verify on Codeberg, archive.org, or GitFlic. Not Zenodo.",
         "forge_publish": "Auto-publish to a non-GitHub forge is SLOT. Operator copies files (Plane C USB or raw URL).",
     }
     return _refuse(SLOTS[slot], notes[slot], slot=slot, mock=True, live=False)
@@ -223,6 +248,8 @@ def refuse_lie_to_survive(
     claim_multihome_dns: bool = False,
     claim_rewrite_to_survive: bool = False,
     claim_worker_holds_chain: bool = False,
+    claim_zenodo_live: bool = False,
+    claim_usb_live: bool = False,
 ) -> dict[str, Any]:
     """CROSS-NETWORK-SURVIVAL + NO-LIE: never lie, even to survive a yank."""
     if claim_rewrite_to_survive:
@@ -255,6 +282,15 @@ def refuse_lie_to_survive(
         rec["note"] = "Cannot claim live multi-homed DNS. That slot is MOCK."
         rec["slot_code"] = SLOTS["multihome_dns"]
         return rec
+    if claim_zenodo_live:
+        return _refuse(
+            "SHELF-DOI-REFUSED",
+            "Cannot claim Zenodo LIVE. Zenodo is IP-banned. Do not invent a DOI.",
+            law=NO_LIE_SPEC,
+            zenodo_dead=True,
+        )
+    if claim_usb_live:
+        return refuse_operator_attest(attested=False, sha256sum_ok=False)
     known = {str(h).lower() for h in (known_hashes or []) if h}
     invented = [str(t) for t in (invented_tips or []) if t and str(t).lower() not in known]
     if invented:
@@ -288,19 +324,38 @@ def refuse_fan(body: Mapping[str, Any] | None = None) -> dict[str, Any]:
 
 
 def doi_is_live(doi: str | None) -> bool:
-    """True only for a concrete Zenodo DOI. No invented / placeholder values."""
-    text = str(doi or "").strip().lower()
+    """Zenodo is IP-banned. A DOI is never LIVE. Do not invent one."""
+    return False
+
+
+def doi_looks_invented(doi: str | None) -> bool:
+    """Any DOI string is treated as invented or dead — never accept."""
+    return bool(str(doi or "").strip())
+
+
+def operator_tip_ref() -> dict[str, str]:
+    return {
+        "date": OPERATOR_DATE,
+        "lockset_tip": OPERATOR_LOCKSET_TIP,
+        "pack_sha256": OPERATOR_PACK_SHA256,
+        "note": "Operator 2026-09-14 cite. Do not invent a DOI.",
+    }
+
+
+def plane_b_host(url: str | None) -> str | None:
+    """Return the independent shelf host, or None. Zenodo is never a host."""
+    text = str(url or "").strip()
     if not text:
-        return False
-    banned = ("example", "todo", "fake", "invented", "xxxx", "placeholder", "tbd", "null")
-    if any(b in text for b in banned):
-        return False
-    if not text.startswith("10.") or "/zenodo." not in text:
-        return False
-    rec = text.rsplit("/zenodo.", 1)[-1]
-    if not rec.isdigit() or rec.startswith("0") or int(rec) < 100:
-        return False
-    return True
+        return None
+    host = (urlparse(text).hostname or "").lower()
+    if host.startswith("www."):
+        host = host[4:]
+    if not host or "zenodo" in host:
+        return None
+    for allowed in PLANE_B_HOSTS:
+        if host == allowed or host.endswith("." + allowed):
+            return allowed
+    return None
 
 
 def plane_a_card() -> dict[str, Any]:
@@ -318,68 +373,152 @@ def plane_a_card() -> dict[str, Any]:
     }
 
 
-def plane_b_status(*, doi: str | None = None, url: str | None = None) -> dict[str, Any]:
-    """Zenodo tip-pack. SLOT until a real DOI is configured. No invented DOIs."""
+def plane_b_status(
+    *,
+    doi: str | None = None,
+    url: str | None = None,
+    sha256: str | None = None,
+    verified: bool | None = None,
+) -> dict[str, Any]:
+    """Independent shelves. SLOT until hash-verify. Zenodo dead — no invented DOI."""
     raw_doi = (doi if doi is not None else os.environ.get(ZENODO_DOI_ENV, "")).strip()
-    raw_url = (url if url is not None else os.environ.get(ZENODO_URL_ENV, "")).strip()
-    if raw_doi and not doi_is_live(raw_doi):
+    raw_url = (
+        url
+        if url is not None
+        else (os.environ.get(PLANE_B_URL_ENV, "") or os.environ.get(ZENODO_URL_ENV, ""))
+    ).strip()
+    if raw_doi:
         return _refuse(
             "SHELF-DOI-REFUSED",
-            "No invented DOIs. Plane B stays SLOT until a real Zenodo DOI (10.xxxx/zenodo.<id>).",
+            "Zenodo is IP-banned. Do not invent a DOI. Plane B is SLOT until hash-verify on Codeberg, archive.org, or GitFlic.",
             plane=PLANE_B,
             doi=raw_doi,
             doi_live=False,
+            zenodo_dead=True,
+            shelves=list(PLANE_B_HOSTS),
+            law=CROSS_NETWORK_SPEC,
         )
-    if not doi_is_live(raw_doi):
+    if raw_url and ("zenodo" in raw_url.lower() or urlparse(raw_url).hostname and "zenodo" in (urlparse(raw_url).hostname or "").lower()):
         rec = refuse_slot("zenodo_doi")
         rec["plane"] = PLANE_B
-        rec["name"] = "zenodo-tip-pack"
+        rec["name"] = "alt-independent-shelves"
         rec["survives_cf_yank"] = True
         rec["doi_live"] = False
-        rec["url"] = raw_url or None
-        rec["note"] = "Plane B is SLOT until a real Zenodo DOI is set. A URL alone is not LIVE."
+        rec["zenodo_dead"] = True
+        rec["url"] = raw_url
+        rec["shelves"] = list(PLANE_B_HOSTS)
+        rec["note"] = "Zenodo is IP-banned. Do not invent a DOI. Plane B stays SLOT until hash-verify on Codeberg / archive.org / GitFlic."
         return rec
-    if raw_url and "zenodo.org" not in raw_url.lower():
-        return _refuse(
-            "SHELF-DOI-REFUSED",
-            "Plane B URL must be a zenodo.org file when DOI is LIVE. No invented hosts.",
-            plane=PLANE_B,
-            url=raw_url,
-            doi=raw_doi,
-            doi_live=True,
-        )
-    return {
-        "ok": True,
-        "code": "SHELF-PLANE-B-LIVE",
-        "plane": PLANE_B,
-        "name": "zenodo-tip-pack",
-        "doi": raw_doi,
-        "url": raw_url or None,
-        "doi_live": True,
-        "live": True,
-        "pull": bool(raw_url),
-        "survives_cf_yank": True,
-        "author": SHELF_AUTHOR,
-        "note": (
-            "DOI LIVE. Fetch + SHA-256 verify only. Auto-deposit remains SLOT."
-            if raw_url
-            else "DOI LIVE. Set AZIELTETHER_ZENODO_URL (zenodo.org file) to pull the tip-pack."
-        ),
-    }
+    host = plane_b_host(raw_url)
+    hash_ok = bool(verified) and bool(sha256) and bool(host)
+    if hash_ok:
+        return {
+            "ok": True,
+            "code": "SHELF-PLANE-B-LIVE",
+            "plane": PLANE_B,
+            "name": "alt-independent-shelves",
+            "url": raw_url,
+            "host": host,
+            "sha256": sha256,
+            "doi_live": False,
+            "zenodo_dead": True,
+            "live": True,
+            "pull": True,
+            "verified": True,
+            "survives_cf_yank": True,
+            "shelves": list(PLANE_B_HOSTS),
+            "tip_ref": operator_tip_ref(),
+            "author": SHELF_AUTHOR,
+            "laws": list(LAWS),
+            "lamb_lens": LAMB_LENS,
+            "note": "Plane B LIVE after SHA-256 verify on an independent shelf. Auto-publish remains SLOT.",
+        }
+    rec = refuse_slot("alt_shelf")
+    rec["plane"] = PLANE_B
+    rec["name"] = "alt-independent-shelves"
+    rec["survives_cf_yank"] = True
+    rec["doi_live"] = False
+    rec["zenodo_dead"] = True
+    rec["live"] = False
+    rec["url"] = raw_url or None
+    rec["host"] = host
+    rec["sha256"] = sha256 or None
+    rec["verified"] = False
+    rec["shelves"] = list(PLANE_B_HOSTS)
+    rec["tip_ref"] = operator_tip_ref()
+    rec["note"] = (
+        "Plane B is SLOT until hash-verify on Codeberg, archive.org, or GitFlic. "
+        "Zenodo is IP-banned. Do not invent a DOI. A URL alone is not LIVE."
+    )
+    return rec
 
 
-def plane_c_card() -> dict[str, Any]:
-    return {
+def refuse_operator_attest(
+    *,
+    attested: bool = False,
+    sha256sum_ok: bool = False,
+) -> dict[str, Any]:
+    """CROSS-NETWORK-SURVIVAL: USB tip-pack is not LIVE until operator attest."""
+    if attested and sha256sum_ok:
+        return {
+            "ok": True,
+            "code": "SHELF-OPERATOR-ATTEST",
+            "plane": PLANE_C,
+            "usb_tip_pack_live": True,
+            "sha256sum_c": True,
+            "operator_attest": True,
+            "author": SHELF_AUTHOR,
+            "law": CROSS_NETWORK_SPEC,
+        }
+    return _refuse(
+        CNS_OPERATOR_ATTEST,
+        "USB tip-pack is not LIVE until the operator attests after sha256sum -c.",
+        plane=PLANE_C,
+        usb_tip_pack_live=False,
+        attested=attested,
+        sha256sum_c=sha256sum_ok,
+        tip_ref=operator_tip_ref(),
+        law=CROSS_NETWORK_SPEC,
+        no_lie=NO_LIE_SPEC,
+        sister_spec=SISTER_SPEC,
+        lamb_lens=LAMB_LENS,
+    )
+
+
+def plane_c_card(store: Any = None) -> dict[str, Any]:
+    attest = {}
+    if store is not None:
+        attest = store.plane_c_attest()
+    usb_live = bool(attest.get("ok") and attest.get("usb_tip_pack_live"))
+    rec: dict[str, Any] = {
         "ok": True,
         "plane": PLANE_C,
         "name": "usb-local-cold-copy",
         "live": True,
+        "local_last_seal": True,
+        "usb_tip_pack_live": usb_live,
         "survives_cf_yank": True,
         "forge_publish": False,
         "forge_publish_slot": SLOTS["forge_publish"],
-        "note": "Last local cold-shelf + USB airgap. Optional non-GitHub forge auto-publish is SLOT; raw HTTPS pull is REAL when the operator sets a URL.",
+        "tip_ref": operator_tip_ref(),
+        "lamb_lens": LAMB_LENS,
+        "note": (
+            "Last local cold-shelf + USB airgap. Worker-down serves last local seal. "
+            "USB tip-pack goes LIVE only after sha256sum -c plus operator attest."
+        ),
         "author": SHELF_AUTHOR,
     }
+    if usb_live:
+        rec["attest"] = {
+            "ok": True,
+            "code": "SHELF-OPERATOR-ATTEST",
+            "sha256": attest.get("sha256"),
+            "lockset_tip": attest.get("lockset_tip"),
+            "pack_sha256": attest.get("pack_sha256"),
+        }
+    else:
+        rec["attest"] = refuse_operator_attest(attested=False, sha256sum_ok=False)
+    return rec
 
 
 def pull_plane_a(*, host: str | None = None, timeout: float | None = None) -> dict[str, Any]:
@@ -904,8 +1043,10 @@ def shelf_sync(
             claim_multihome_dns=bool(incoming.get("multihome_dns") or incoming.get("anycast")),
             claim_rewrite_to_survive=bool(incoming.get("rewrite_to_survive")),
             claim_worker_holds_chain=bool(incoming.get("worker_holds_chain")),
+            claim_zenodo_live=bool(incoming.get("zenodo_live") or incoming.get("doi_live")),
+            claim_usb_live=bool(incoming.get("usb_live") and incoming.get("operator_attest") is False),
         )
-        if incoming.get("ipfs_live") or incoming.get("cid") or incoming.get("multihome_dns") or incoming.get("anycast") or incoming.get("rewrite_to_survive") or incoming.get("worker_holds_chain"):
+        if incoming.get("ipfs_live") or incoming.get("cid") or incoming.get("multihome_dns") or incoming.get("anycast") or incoming.get("rewrite_to_survive") or incoming.get("worker_holds_chain") or incoming.get("zenodo_live") or incoming.get("doi_live"):
             if not lie.get("ok"):
                 return lie
 
@@ -928,24 +1069,32 @@ def shelf_sync(
     ingest_acks: list[str] = []
     card: dict[str, Any] = {}
     plane_a_pull: dict[str, Any] = {**plane_a_card(), "pulled": False}
-    stored = st.zenodo()
+    stored = st.plane_b()
+    incoming_doi = incoming.get("zenodo_doi") if incoming else None
+    incoming_zenodo_url = incoming.get("zenodo_url") if incoming else None
+    incoming_b_url = None
+    if incoming:
+        incoming_b_url = incoming.get("plane_b_url") or incoming.get("alt_shelf_url")
+    stored_url = stored.get("url") or None
+    if stored_url and "zenodo" in str(stored_url).lower():
+        stored_url = None
     plane_b = plane_b_status(
-        doi=(
-            incoming["zenodo_doi"]
-            if incoming and "zenodo_doi" in incoming
-            else (stored.get("doi") or None)
-        ),
+        doi=incoming_doi,
         url=(
-            incoming["zenodo_url"]
-            if incoming and "zenodo_url" in incoming
-            else (stored.get("url") or None)
+            incoming_b_url
+            if incoming_b_url is not None
+            else (incoming_zenodo_url if incoming_zenodo_url is not None else stored_url)
         ),
+        sha256=expected_sha256 or stored.get("sha256"),
+        verified=bool(stored.get("verified")) and not incoming_doi,
     )
-    if incoming and incoming.get("zenodo_doi") and not plane_b.get("ok"):
+    if incoming and (incoming.get("zenodo_doi") or incoming.get("zenodo_url")) and not plane_b.get("ok"):
         return plane_b
-    if incoming and ("zenodo_doi" in incoming or "zenodo_url" in incoming) and plane_b.get("code") != "SHELF-DOI-REFUSED":
-        st.set_zenodo(doi=incoming.get("zenodo_doi"), url=incoming.get("zenodo_url"))
-    if plane_b.get("ok") and plane_b.get("url"):
+    if incoming and incoming.get("usb_live") and not st.plane_c_attest().get("usb_tip_pack_live"):
+        return refuse_operator_attest(attested=False, sha256sum_ok=False)
+    if incoming and incoming_b_url and plane_b.get("code") != "SHELF-DOI-REFUSED":
+        st.set_plane_b(url=incoming_b_url, sha256=expected_sha256, verified=False)
+    if plane_b.get("ok") and plane_b.get("url") and plane_b.get("verified"):
         urls = list(urls or []) + [str(plane_b["url"])]
 
     for url in _configured_urls(st, urls):
@@ -953,6 +1102,13 @@ def shelf_sync(
         pulls.append({k: v for k, v in pulled.items() if k != "manifest"})
         if not pulled.get("ok"):
             continue
+        if plane_b_host(url) and pulled.get("checked"):
+            st.set_plane_b(url=url, sha256=pulled.get("bytes_sha256"), verified=True)
+            plane_b = plane_b_status(
+                url=url,
+                sha256=pulled.get("bytes_sha256"),
+                verified=True,
+            )
         doc = pulled["manifest"]
         items = doc.get("items") if isinstance(doc.get("items"), list) else []
         known = st.chain().hashes() | {str(i.get("hash")) for i in items if isinstance(i, dict)}
@@ -1045,8 +1201,10 @@ def shelf_sync(
         "planes": {
             "A": plane_a_pull,
             "B": plane_b,
-            "C": plane_c_card(),
+            "C": plane_c_card(st),
         },
+        "tip_ref": operator_tip_ref(),
+        "lamb_lens": LAMB_LENS,
     }
 
 
@@ -1079,9 +1237,18 @@ def export_usb(store: Any, dest: str | Path) -> dict[str, Any]:
         f"manifest.json bytes sha256: {sealed['bytes_sha256']}\n"
         "On the airgapped machine:\n"
         f"  azieltether shelf usb-import --src {root}\n"
+        "On this USB, verify then attest (USB tip-pack is not LIVE until then):\n"
+        "  sha256sum -c manifest.sha256\n"
+        f"  azieltether shelf attest --src {root}\n"
+        f"Refuse {CNS_OPERATOR_ATTEST} until sha256sum -c + operator attest.\n"
         "Refuse if SHA-256 mismatches. Multi-homed DNS / IPFS / auto-publish / invented DOIs are SLOT.\n"
+        "Zenodo is IP-banned. Do not invent a DOI.\n"
         "Planes: A = four CF hubs same tunnel (does not survive CF yank). "
-        "B = Zenodo SLOT until a real DOI. C = this USB / last local copy.\n"
+        "B = Codeberg / archive.org / GitFlic SLOT until hash-verify. "
+        "C = this USB / last local copy. Worker-up A; Worker-down last C; restore hash-reconcile never rewrite.\n"
+        f"Tip ref {OPERATOR_DATE}: lockset tip {OPERATOR_LOCKSET_TIP}\n"
+        f"pack_sha256 {OPERATOR_PACK_SHA256}\n"
+        f"Laws: {CROSS_NETWORK_SPEC}, {NO_LIE_SPEC}, {SISTER_SPEC}. NO-FAN. Lamb Lens: {LAMB_LENS}.\n"
     )
     (root / "README.txt").write_text(readme, encoding="utf-8")
     return {
@@ -1100,8 +1267,15 @@ def export_usb(store: Any, dest: str | Path) -> dict[str, Any]:
     }
 
 
-def import_usb(store: Any, src: str | Path, *, expected_sha256: str | None = None) -> dict[str, Any]:
-    """Verify a USB shelf and merge by hash. Never rewrite."""
+def import_usb(
+    store: Any,
+    src: str | Path,
+    *,
+    expected_sha256: str | None = None,
+    claim_live: bool = False,
+    operator_attest: bool = False,
+) -> dict[str, Any]:
+    """Verify a USB shelf and merge by hash. Never rewrite. LIVE needs attest."""
     root = Path(src)
     manifest = root / "manifest.json"
     if not manifest.is_file():
@@ -1131,8 +1305,19 @@ def import_usb(store: Any, src: str | Path, *, expected_sha256: str | None = Non
                 return _refuse("SHELF-USB-POISON", "queue.jsonl has a broken line.")
             if isinstance(raw, dict):
                 items.append(raw)
+    if claim_live and not operator_attest:
+        return refuse_operator_attest(attested=False, sha256sum_ok=bool(check.get("ok")))
     merged = merge_verified_items(store, items)
     sealed = seal_shelf(store)
+    attest = None
+    if operator_attest:
+        attest = attest_usb(
+            store,
+            root,
+            expected_sha256=expected_sha256 or check.get("expected") or check.get("sha256"),
+        )
+        if not attest.get("ok"):
+            return attest
     return {
         "ok": bool(sealed.get("ok")),
         "code": "SHELF-USB-IMPORT",
@@ -1141,12 +1326,97 @@ def import_usb(store: Any, src: str | Path, *, expected_sha256: str | None = Non
         "seal": {k: v for k, v in sealed.items() if k != "items"},
         "sha256": parsed["sha256"],
         "bytes_sha256": check.get("sha256"),
+        "usb_tip_pack_live": bool(attest and attest.get("usb_tip_pack_live")),
+        "attest": attest,
         "author": SHELF_AUTHOR,
         "person_id": PERSON_ID,
         "spec": SHELF_SPEC,
         "sister_spec": SISTER_SPEC,
         "rewrite_key": False,
+        "tip_ref": operator_tip_ref(),
+        "lamb_lens": LAMB_LENS,
     }
+
+
+def sha256sum_c(src: str | Path, *, expected: str | None = None) -> dict[str, Any]:
+    """Operator `sha256sum -c` on the USB tip-pack sidecar."""
+    root = Path(src)
+    manifest = root / "manifest.json"
+    if not manifest.is_file():
+        return _refuse("SHELF-USB-MISSING", "USB shelf needs manifest.json for sha256sum -c.", src=str(root))
+    data = manifest.read_bytes()
+    sidecar = root / "manifest.sha256"
+    sidecar_hex = None
+    if sidecar.is_file():
+        sidecar_hex = sidecar.read_text(encoding="utf-8").strip().split()[0]
+    want = expected or sidecar_hex
+    if not want:
+        return refuse_operator_attest(attested=False, sha256sum_ok=False)
+    check = verify_sha256(data, want)
+    if not check.get("ok"):
+        return check
+    return {
+        "ok": True,
+        "code": "SHELF-SHA256SUM-C",
+        "sha256": check["sha256"],
+        "expected": check.get("expected"),
+        "sidecar": sidecar_hex,
+        "checked": True,
+        "author": SHELF_AUTHOR,
+        "law": NO_LIE_SPEC,
+    }
+
+
+def attest_usb(
+    store: Any,
+    src: str | Path,
+    *,
+    expected_sha256: str | None = None,
+    operator_attest: bool = True,
+    pack_sha256: str | None = None,
+    lockset_tip: str | None = None,
+) -> dict[str, Any]:
+    """Mark a USB tip-pack LIVE after sha256sum -c. Refuse CNS-OPERATOR-ATTEST until then."""
+    if not operator_attest:
+        return refuse_operator_attest(attested=False, sha256sum_ok=False)
+    check = sha256sum_c(src, expected=expected_sha256)
+    if not check.get("ok"):
+        return check
+    if pack_sha256:
+        pack_check = verify_sha256(Path(src).joinpath("manifest.json").read_bytes(), pack_sha256)
+        if not pack_check.get("ok"):
+            return pack_check
+    tip = lockset_tip or OPERATOR_LOCKSET_TIP
+    try:
+        tip = require_hex64("lockset_tip", tip)
+    except ValueError as exc:
+        return _refuse("SHELF-SHA256-BAD", str(exc))
+    rec = {
+        "ok": True,
+        "code": "SHELF-OPERATOR-ATTEST",
+        "plane": PLANE_C,
+        "usb_tip_pack_live": True,
+        "sha256sum_c": True,
+        "operator_attest": True,
+        "operator_date": OPERATOR_DATE,
+        "src": str(Path(src)),
+        "sha256": check["sha256"],
+        "lockset_tip": tip,
+        "pack_sha256": pack_sha256 or check["sha256"],
+        "tip_ref": operator_tip_ref(),
+        "spec": SHELF_SPEC,
+        "sister_spec": SISTER_SPEC,
+        "cross_network": CROSS_NETWORK_SPEC,
+        "no_lie": NO_LIE_SPEC,
+        "laws": list(LAWS),
+        "lamb_lens": LAMB_LENS,
+        "author": SHELF_AUTHOR,
+        "person_id": PERSON_ID,
+        "rewrite_key": False,
+        "note": "Operator attested after sha256sum -c. USB tip-pack LIVE. Never rewrite.",
+    }
+    store.set_plane_c_attest(rec)
+    return rec
 
 
 def refuse_delete_shelf(path: str | Path) -> None:
@@ -1183,14 +1453,19 @@ def law_card() -> dict[str, Any]:
         "auto_publish": False,
         "anycast": False,
         "az_generator": False,
+        "zenodo_dead": True,
+        "invented_doi": False,
         "planes": {
             "A": plane_a_card(),
             "B": plane_b_status(),
             "C": plane_c_card(),
         },
+        "tip_ref": operator_tip_ref(),
         "real": list(REAL),
         "mock": sorted(SLOTS.keys()),
         "slots": {k: {"code": v, "live": False} for k, v in SLOTS.items()},
         "laws": list(LAWS),
         "law": LAW,
+        "lamb_lens": LAMB_LENS,
+        "no_fan": True,
     }

@@ -83,3 +83,15 @@ def test_cli_wires_and_survival(tmp_path: Path, capsys) -> None:
     assert main(["--home", str(home), "shelf", "sync", "--no-probe", "--zenodo-doi", "10.5281/zenodo.XXXX"]) == 1
     bad = json.loads(capsys.readouterr().out)
     assert bad["code"] == "SHELF-DOI-REFUSED"
+    assert main(["--home", str(home), "shelf", "sync", "--no-probe", "--zenodo-doi", "10.5281/zenodo.123456"]) == 1
+    dead = json.loads(capsys.readouterr().out)
+    assert dead["code"] == "SHELF-DOI-REFUSED"
+    usb = home / "usb-shelf"
+    assert main(["--home", str(home), "shelf", "usb", "--dest", str(usb)]) == 0
+    capsys.readouterr()
+    assert main(["--home", str(home), "shelf", "attest", "--src", str(usb)]) == 0
+    attested = json.loads(capsys.readouterr().out)
+    assert attested["ok"] is True
+    assert attested["code"] == "SHELF-OPERATOR-ATTEST"
+    assert attested["usb_tip_pack_live"] is True
+    assert attested["tip_ref"]["lockset_tip"] == "c831429befc221bd41caeb0a6d1c5361602db5684abab7af6d39714084b6b245"
