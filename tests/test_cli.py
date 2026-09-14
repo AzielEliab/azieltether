@@ -61,6 +61,11 @@ def test_cli_wires_and_survival(tmp_path: Path, capsys) -> None:
     payload = json.loads(capsys.readouterr().out)
     assert payload["wires"]["spec"] == "SPLIT-THE-WIRES-1.0"
     assert payload["survival"]["spec"] == "COLD-COPY-SURVIVAL-1.0"
+    assert payload["reheal"]["spec"] == "REHEAL-1.0"
+    assert main(["--home", str(home), "reheal"]) == 0
+    rh = json.loads(capsys.readouterr().out)
+    assert rh["reheal"]["wait"] == "phoenix-WAIT"
+    assert rh["spec"] == "REHEAL-1.0"
     assert main(["--home", str(home), "survival"]) == 0
     surv = json.loads(capsys.readouterr().out)
     assert surv["multiply"]["count"] >= 3

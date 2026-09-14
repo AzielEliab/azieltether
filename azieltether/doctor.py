@@ -154,6 +154,22 @@ def _check_survival() -> Check:
     return _ok("cold-copy survival", f"{MIN_COLD_COPIES} copies")
 
 
+def _check_reheal() -> Check:
+    from azieltether.reheal import chatter_allowed, decide, refuse_vote_to_fix
+
+    vote = refuse_vote_to_fix(votes_for=99, neighbor_fix="please")
+    if vote.get("ok"):
+        return _fail("reheal", "neighbor vote-to-fix accepted")
+    if chatter_allowed({"body": "nope"}):
+        return _fail("reheal", "illegal chatter")
+    if not chatter_allowed({"live": 1, "locked": 0, "isolated": 0, "tip_hash": "a" * 64}):
+        return _fail("reheal", "legal chatter refused")
+    wait = decide(own_tip="a" * 64, actor_node_id="n", failed_node_id="n")
+    if wait.get("wait") != "phoenix-WAIT":
+        return _fail("reheal", str(wait.get("code")))
+    return _ok("reheal", "own tip + phoenix-WAIT; no vote-to-fix")
+
+
 CHECKS: tuple[Callable[[], Check], ...] = (
     _check_version,
     _check_identity,
@@ -163,6 +179,7 @@ CHECKS: tuple[Callable[[], Check], ...] = (
     _check_tip,
     _check_wires,
     _check_survival,
+    _check_reheal,
 )
 
 

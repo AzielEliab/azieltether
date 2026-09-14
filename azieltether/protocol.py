@@ -2,6 +2,7 @@
 
 SPLIT THE WIRES: tick vs payload, never one socket.
 COLD-COPY SURVIVAL: multiply sealed copies; refuse live body sync.
+REHEAL: own last good tip + trusted pull or phoenix-WAIT.
 
 The tether lives in the downloaded software. godlock.uk stays mesh-free.
 
@@ -57,7 +58,8 @@ LIMITATION = (
     "or a mesh on godlock.uk. Public HTTPS boards stay mesh-free. The "
     "tether lives in the downloaded software. SPLIT THE WIRES (tick vs "
     "payload; 777s gate). COLD-COPY SURVIVAL (multiply copies; no live "
-    "body sync). Author Aziel Eliab."
+    "body sync). REHEAL (own last good tip + trusted pull or "
+    "phoenix-WAIT; no neighbor vote-to-fix). Author Aziel Eliab."
 )
 
 
@@ -424,6 +426,7 @@ def serve_payload(store: Store, body: dict[str, Any], *, socket: str = GATE_SOCK
 
 
 def wires_report() -> dict[str, Any]:
+    from azieltether.reheal import law_card as reheal_card
     from azieltether.survival import law_card as survival_card
     from azieltether.wires import law_card
 
@@ -433,6 +436,73 @@ def wires_report() -> dict[str, Any]:
         "author": "Aziel Eliab",
         "wires": law_card(),
         "survival": survival_card(),
+        "reheal": reheal_card(),
         "law": WIRES_LAW,
         "limitation": LIMITATION,
+    }
+
+
+def reheal(
+    store: Store | None = None,
+    *,
+    cite: str | None = None,
+    lockset: str | None = None,
+    incoming: list[dict[str, Any]] | None = None,
+    votes_for: int = 0,
+    neighbor_fix: Any = None,
+    chatter: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Heal from own last good tip + trusted pull, or phoenix-WAIT."""
+    from azieltether.reheal import (
+        REHEAL_SPEC,
+        decide,
+        filter_chatter,
+        last_good_tip as tip_of,
+    )
+    from azieltether.survival import item_digest_ok
+
+    st = store or Store()
+    chain = st.chain()
+    own = chain.last_good_tip() or tip_of([i.as_dict() for i in chain.items])
+    digest_ok = True
+    pulled: list[dict[str, Any]] = []
+    for raw in incoming or []:
+        if not isinstance(raw, dict) or not item_digest_ok(raw):
+            digest_ok = False
+            break
+        pulled.append(raw)
+    if incoming and not pulled:
+        digest_ok = False
+    verdict = decide(
+        own_tip=own,
+        cite=cite,
+        lockset=lockset,
+        digest_ok=digest_ok and bool(pulled),
+        votes_for=votes_for,
+        neighbor_fix=neighbor_fix,
+        actor_node_id=st.node_id(),
+        failed_node_id=st.node_id(),
+        chatter=chatter,
+    )
+    merged = {"added": 0, "skipped": 0}
+    if verdict.get("code") == "REHEAL-TRUSTED-PULL" and pulled:
+        merged = chain.merge(pulled, operator=False, cite=cite, lockset=lockset)
+        st.multiply_copies()
+    state = st.state()
+    state["last_good_tip"] = own
+    state["reheal"] = verdict.get("code")
+    st.write_state(state)
+    return {
+        "ok": bool(verdict.get("ok")),
+        "product": "azieltether",
+        "author": "Aziel Eliab",
+        "spec": REHEAL_SPEC,
+        "own_tip": own,
+        "reheal": verdict,
+        "merge": merged,
+        "chatter": filter_chatter(chatter),
+        "wires_spec": WIRES_SPEC,
+        "survival_spec": SURVIVAL_SPEC,
+        "limitation": LIMITATION,
+        "vpn": False,
     }

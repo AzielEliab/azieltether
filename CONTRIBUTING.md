@@ -38,12 +38,16 @@ Python 3.10+. Core is stdlib only. pytest is the dev extra.
 9. **COLD-COPY SURVIVAL.** Multiply cold copies. Refuse live body sync.
    Tips are expensive to erase. Single-server pull cannot kill local
    copies. Hash-absolute. Data outlives creators.
+10. **REHEAL.** Own last good tip + verified trusted pull or
+    phoenix-WAIT. No neighbor vote-to-fix. Chatter is
+    live/locked/isolated/tip-hash only.
 
 ## Where to change things
 
 - Isolated counter: `workers/download-tracker/`
 - Suite mesh / QNM Live Nodes + QNS-CD-1.0 cross-map: `workers/download-tracker/src/mesh.js` (`/v1/mesh/*` PROXY to aziel-runtime).
 - SPLIT THE WIRES + COLD-COPY SURVIVAL: `azieltether/wires.py`, `azieltether/survival.py`, `workers/download-tracker/src/wires.js`.
+- REHEAL: `azieltether/reheal.py` (own tip + trusted pull or phoenix-WAIT).
 
 ## License of contributions
 

@@ -108,7 +108,15 @@ kill local copies. Poison is hash-absolute. Data outlives creators.
 
 See [COLD-COPY-SURVIVAL.md](COLD-COPY-SURVIVAL.md).
 
-## 8. What this is not
+## 8. REHEAL
+
+A node reheals from its own last good tip, then a verified trusted
+pull (cite + lockset) or **phoenix-WAIT**. Neighbors cannot vote a
+fix. Allowed chatter is live / locked / isolated / tip-hash only.
+
+See [REHEAL.md](REHEAL.md).
+
+## 9. What this is not
 
 Not a VPN. Not MirageGrid. Not a kernel. Not a truth score. Not a
 backdoor onto godlock.uk or the library. Not Horton. Not Altman.

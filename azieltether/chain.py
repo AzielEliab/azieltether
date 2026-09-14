@@ -148,6 +148,12 @@ class Chain:
             return GENESIS_PREV_HASH
         return self._items[-1].hash
 
+    def last_good_tip(self) -> str | None:
+        """Own last verified prefix tip. Poison stops the walk (fail-closed)."""
+        from azieltether.reheal import last_good_tip as _last_good
+
+        return _last_good([item.as_dict() for item in self._items])
+
     def append_item(self, item: Item) -> Item:
         if item.hash in self.hashes():
             return item

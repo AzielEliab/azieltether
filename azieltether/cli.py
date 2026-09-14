@@ -16,6 +16,7 @@
     azieltether harvest
     azieltether wires
     azieltether survival
+    azieltether reheal
     azieltether status
     azieltether node-id
 
@@ -34,7 +35,7 @@ from typing import Sequence
 from azieltether import __version__
 from azieltether.errors import AzielTetherError, ChainError, ItemError
 from azieltether.lattice import SURFACES, bind_surfaces, mint_tip
-from azieltether.protocol import LIMITATION, dual_chain_report, pulse, reconcile, wires_report
+from azieltether.protocol import LIMITATION, dual_chain_report, pulse, reconcile, reheal, wires_report
 from azieltether.queues import harvest
 from azieltether.store import Store
 
@@ -104,8 +105,13 @@ def _build_parser() -> argparse.ArgumentParser:
     p_har = sub.add_parser("harvest", help="Copy sibling tether queues (e.g. ~/.az-clce).")
     p_har.add_argument("--file", action="append", default=[], help="Extra JSONL queue path.")
 
-    sub.add_parser("wires", help="Print SPLIT THE WIRES + COLD-COPY SURVIVAL law.")
+    sub.add_parser("wires", help="Print SPLIT THE WIRES + COLD-COPY SURVIVAL + REHEAL law.")
     sub.add_parser("survival", help="Multiply local cold copies; print survival card.")
+    p_rh = sub.add_parser("reheal", help="Heal from own last good tip; no neighbor vote-to-fix.")
+    p_rh.add_argument("--cite", default=None, help="Trusted-pull cite (must be own last good tip).")
+    p_rh.add_argument("--lockset", default=None, help="Sealed lockset hash.")
+    p_rh.add_argument("--file", default=None, help="JSON items for a verified trusted pull.")
+    p_rh.add_argument("--votes", type=int, default=0, help="Neighbor votes (always refused).")
 
     p_imp = sub.add_parser("import", help="Import a JSON export.")
     p_imp.add_argument("file")
@@ -291,6 +297,25 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "multiply": copies,
                     "manifest": copy_manifest(st.copies_dir),
                 }
+            )
+            return 0
+
+        if args.cmd == "reheal":
+            incoming = []
+            if args.file:
+                doc = json.loads(Path(args.file).read_text(encoding="utf-8"))
+                if isinstance(doc, list):
+                    incoming = doc
+                elif isinstance(doc, dict):
+                    incoming = doc.get("items") or []
+            _print_json(
+                reheal(
+                    st,
+                    cite=args.cite,
+                    lockset=args.lockset,
+                    incoming=incoming,
+                    votes_for=args.votes,
+                )
             )
             return 0
 

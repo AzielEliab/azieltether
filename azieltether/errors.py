@@ -29,3 +29,7 @@ class WiresError(ProtocolError):
 
 class SurvivalError(ProtocolError):
     """COLD-COPY SURVIVAL refused live sync, poison, or a free tip erase."""
+
+
+class RehealError(ProtocolError):
+    """REHEAL refused a neighbor vote-to-fix or illegal chatter."""

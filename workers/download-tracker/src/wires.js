@@ -6,6 +6,8 @@
  * Multiply cold copies. Refuse live body sync. Tip expensive to erase.
  * Unkillable by single-server pull. Hash-absolute fail-closed.
  * Data outlives creators.
+ * REHEAL: own last good tip + verified trusted pull or phoenix-WAIT.
+ * No neighbor vote-to-fix. Chatter: live/locked/isolated/tip-hash only.
  * Author: Aziel Eliab only.
  */
 
@@ -31,6 +33,10 @@ export const TIP_ERASE_FREE = false;
 export const SINGLE_SERVER_CAN_KILL = false;
 export const HASH_ABSOLUTE = true;
 export const OUTLIVES_CREATORS = true;
+export const REHEAL_SPEC = "REHEAL-1.0";
+export const NEIGHBOR_VOTE_TO_FIX = false;
+export const ALLOWED_CHATTER = Object.freeze(["live", "locked", "isolated", "tip_hash"]);
+export const PHOENIX_WAIT = "phoenix-WAIT";
 
 const TICK_FORBIDDEN = new Set([
   "body", "payload", "diff", "file", "items", "data", "blob", "content", "chain",
@@ -41,6 +47,9 @@ export const WIRES_LAW =
 
 export const SURVIVAL_LAW =
   "COLD-COPY SURVIVAL. Multiply cold copies. Refuse live body sync across the network. A tip is expensive to erase. Unkillable by a single-server pull. Poison is hard: hash-absolute, fail-closed. Data outlives creators. Author: Aziel Eliab only.";
+
+export const REHEAL_LAW =
+  "REHEAL. Heal from your own last good tip plus a verified trusted pull, or phoenix-WAIT. No neighbor vote-to-fix. Allowed chatter is live / locked / isolated / tip-hash only. Author: Aziel Eliab only.";
 
 function hex64(name, value) {
   const text = String(value || "").trim().toLowerCase();
@@ -267,6 +276,48 @@ export function acceptPayload(body, socket = GATE_SOCKET) {
   };
 }
 
+export function chatterAllowed(body) {
+  if (!body || typeof body !== "object") return true;
+  return Object.keys(body).every((k) => {
+    const name = (k === "tip-hash") ? "tip_hash" : k;
+    return ALLOWED_CHATTER.includes(name);
+  });
+}
+
+export function refuseVoteToFix(votesFor = 0, neighborFix) {
+  if (NEIGHBOR_VOTE_TO_FIX) return { ok: true, code: "REHEAL-VOTE-OK", author: WIRES_AUTHOR };
+  if (votesFor || neighborFix) {
+    return {
+      ok: false,
+      code: "REHEAL-VOTE-REFUSED",
+      applied: false,
+      wait: PHOENIX_WAIT,
+      note: "No neighbor vote-to-fix.",
+      author: WIRES_AUTHOR,
+    };
+  }
+  return { ok: true, code: "REHEAL-NO-VOTE", author: WIRES_AUTHOR };
+}
+
+export function decideReheal({ ownTip, cite, lockset, digestOk = false, votesFor = 0, neighborFix, chatter }) {
+  if (chatter && !chatterAllowed(chatter)) {
+    return { ok: false, code: "REHEAL-CHATTER", wait: PHOENIX_WAIT, author: WIRES_AUTHOR };
+  }
+  const vote = refuseVoteToFix(votesFor, neighborFix);
+  if (!vote.ok) return vote;
+  if (ownTip && citeOk(cite, lockset) && digestOk && String(cite).toLowerCase() === String(ownTip).toLowerCase()) {
+    return { ok: true, code: "REHEAL-TRUSTED-PULL", applied: true, own_tip: ownTip, wait: false, author: WIRES_AUTHOR };
+  }
+  return {
+    ok: true,
+    code: "REHEAL-PHOENIX-WAIT",
+    applied: false,
+    own_tip: ownTip || null,
+    wait: PHOENIX_WAIT,
+    author: WIRES_AUTHOR,
+  };
+}
+
 export function wiresCard() {
   return {
     ok: true,
@@ -292,6 +343,11 @@ export function wiresCard() {
     outlives_creators: OUTLIVES_CREATORS,
     law: WIRES_LAW,
     survival_law: SURVIVAL_LAW,
+    reheal_spec: REHEAL_SPEC,
+    reheal_law: REHEAL_LAW,
+    neighbor_vote_to_fix: NEIGHBOR_VOTE_TO_FIX,
+    allowed_chatter: ALLOWED_CHATTER.slice(),
+    phoenix: PHOENIX_WAIT,
   };
 }
 
@@ -301,6 +357,9 @@ export function attachWires(data) {
     ...data,
     wires_spec: WIRES_SPEC,
     survival_spec: SURVIVAL_SPEC,
+    reheal_spec: REHEAL_SPEC,
+    allowed_chatter: ALLOWED_CHATTER.slice(),
+    neighbor_vote_to_fix: NEIGHBOR_VOTE_TO_FIX,
     wires: {
       tick_ms: [TICK_MIN_MS, TICK_MAX_MS],
       gate_dwell_s: GATE_DWELL_S,

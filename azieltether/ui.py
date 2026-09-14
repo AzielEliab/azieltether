@@ -28,6 +28,7 @@ from azieltether.protocol import (
     serve_payload,
     pulse,
     reconcile,
+    reheal,
 )
 from azieltether.store import Store
 
@@ -108,7 +109,9 @@ PAGE = r"""<!DOCTYPE html>
       it is up. When it is down, nodes sync hash-chained work with each other,
       then reconcile on restore. SPLIT THE WIRES: tick is presence + tip
       only; payload is a receiver pull on the 777s gate. COLD-COPY SURVIVAL:
-      multiply sealed copies; no live body sync. Dual-chain keeps both
+      multiply sealed copies; no live body sync. REHEAL from own last
+      good tip plus a trusted pull, or phoenix-WAIT — no neighbor
+      vote-to-fix. Dual-chain keeps both
       children of the same prev_hash. Public boards stay mesh-free. Bound
       to 127.0.0.1.
     </p>
@@ -356,6 +359,21 @@ class Handler(BaseHTTPRequestHandler):
                 body = self._read_json()
                 rec = serve_payload(store, body)
                 self._json(200 if rec.get("ok") else 400, rec)
+                return
+            if path == "/api/reheal":
+                body = self._read_json()
+                rec = reheal(
+                    store,
+                    cite=body.get("cite"),
+                    lockset=body.get("lockset"),
+                    incoming=body.get("items") if isinstance(body.get("items"), list) else [],
+                    votes_for=int(body.get("votes_for") or 0),
+                    neighbor_fix=body.get("neighbor_fix"),
+                    chatter=body.get("chatter") if isinstance(body.get("chatter"), dict) else None,
+                )
+                snap = _snapshot(store, rec.get("reheal", {}).get("code", "reheal"))
+                snap.update(rec)
+                self._json(200 if rec.get("ok") else 400, snap)
                 return
             body = self._read_json() if path != "/api/verify" else {}
             if path == "/api/verify":

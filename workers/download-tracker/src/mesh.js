@@ -11,7 +11,7 @@
  * Author: Aziel Eliab only.
  */
 
-import { attachWires, GATE_DWELL_S, SURVIVAL_SPEC, TICK_MAX_MS, TICK_MIN_MS, WIRES_SPEC } from "./wires.js";
+import { attachWires, GATE_DWELL_S, REHEAL_SPEC, SURVIVAL_SPEC, TICK_MAX_MS, TICK_MIN_MS, WIRES_SPEC } from "./wires.js";
 
 const RUNTIME = "https://aziel-runtime.vibelock.workers.dev";
 const FRAGGATE_MCP = "https://aziel-runtime.vibelock.workers.dev/mcp";
@@ -91,9 +91,13 @@ export const MESH_MIN_COLD_COPIES = 3;
 export const MESH_HASH_ABSOLUTE = true;
 export const MESH_OUTLIVES_CREATORS = true;
 export const MESH_SINGLE_SERVER_CAN_KILL = false;
+export const REHEAL_SPEC_CITE = "REHEAL-1.0";
+export const MESH_NEIGHBOR_VOTE_TO_FIX = false;
+export const MESH_ALLOWED_CHATTER = Object.freeze(["live", "locked", "isolated", "tip_hash"]);
+export const MESH_PHOENIX_WAIT = "phoenix-WAIT";
 
 export const MESH_NOTE =
-  "QNM-BUILD-1.0. QNS-CD-1.0 photon QNS1 packet transfer (hub cite / Worker mesh cross-map only; local qnsd in qnm-node; not a Softwares-tab product; no public qnsd proxy). SPLIT-THE-WIRES-1.0 (0.5–1s tick presence+tip; 777s gate pull; sockets never shared). COLD-COPY-SURVIVAL-1.0 (multiply copies; no live body sync; hash-absolute). Suite mesh default off. Live|locked|isolated counts only. No Node Gate. No auto-heal. Not an anonymity network. Author: Aziel Eliab only.";
+  "QNM-BUILD-1.0. QNS-CD-1.0 photon QNS1 packet transfer (hub cite / Worker mesh cross-map only; local qnsd in qnm-node; not a Softwares-tab product; no public qnsd proxy). SPLIT-THE-WIRES-1.0. COLD-COPY-SURVIVAL-1.0. REHEAL-1.0 (own tip + trusted pull or phoenix-WAIT; chatter live|locked|isolated|tip-hash only; no vote-to-fix). Suite mesh default off. Live|locked|isolated counts only. No Node Gate. No auto-heal. Not an anonymity network. Author: Aziel Eliab only.";
 
 /** Stamp the QNS-CD-1.0 cross-map onto a mesh / Live Nodes envelope. */
 export function attachQnsCd(data) {
@@ -251,6 +255,9 @@ export function emptyMesh(extra = {}) {
     push_fanout: false,
     live_body_sync: false,
     auto_splice: false,
+    reheal_spec: REHEAL_SPEC,
+    allowed_chatter: ["live", "locked", "isolated", "tip_hash"],
+    neighbor_vote_to_fix: false,
   };
 }
 
@@ -364,6 +371,10 @@ export function publicMesh(mesh) {
     hash_absolute: MESH_HASH_ABSOLUTE,
     outlives_creators: MESH_OUTLIVES_CREATORS,
     single_server_can_kill: MESH_SINGLE_SERVER_CAN_KILL,
+    reheal_spec: REHEAL_SPEC_CITE,
+    allowed_chatter: MESH_ALLOWED_CHATTER.slice(),
+    neighbor_vote_to_fix: MESH_NEIGHBOR_VOTE_TO_FIX,
+    phoenix: MESH_PHOENIX_WAIT,
     note: m.note || MESH_NOTE,
   };
 }

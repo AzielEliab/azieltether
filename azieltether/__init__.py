@@ -22,12 +22,14 @@ from azieltether.errors import (
     ChainError,
     ItemError,
     ProtocolError,
+    RehealError,
     SurvivalError,
     WiresError,
 )
 from azieltether.item import GENESIS_PREV_HASH, Item, digest_item
 from azieltether.lattice import SURFACES, LatticeTip, tip_from_chain
-from azieltether.protocol import MODE_PEER, MODE_PREFER, MODE_RECONCILE, pulse, reconcile
+from azieltether.protocol import MODE_PEER, MODE_PREFER, MODE_RECONCILE, pulse, reconcile, reheal
+from azieltether.reheal import REHEAL_SPEC
 from azieltether.survival import SURVIVAL_SPEC
 from azieltether.wires import WIRES_SPEC
 
@@ -47,6 +49,8 @@ __all__ = [
     "MODE_PREFER",
     "MODE_RECONCILE",
     "ProtocolError",
+    "REHEAL_SPEC",
+    "RehealError",
     "SURFACES",
     "SURVIVAL_SPEC",
     "SurvivalError",
@@ -56,6 +60,7 @@ __all__ = [
     "detect_dual_chain",
     "digest_item",
     "pulse",
+    "reheal",
     "reconcile",
     "tip_from_chain",
     "__author__",

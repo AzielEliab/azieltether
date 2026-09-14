@@ -7,10 +7,14 @@
  */
 import { meshOpenApiPaths, meshPointer } from "./mesh.js";
 import {
+  REHEAL_LAW,
+  REHEAL_SPEC,
   SURVIVAL_LAW,
   SURVIVAL_SPEC,
   WIRES_LAW,
   WIRES_SPEC,
+  decideReheal,
+  refuseVoteToFix,
   acceptPayload,
   acceptTick,
   refuseLiveBodySync,
@@ -32,7 +36,7 @@ const LIMITATION =
 
 const SKILL = `---
 name: AzielTether
-description: Use when preferring a central Worker, peer-syncing hash-chained work while it is down, reconciling on restore, or minting lattice tips across GodLock / Aziel Digital Library / product Workers. Dual surface: Worker /v1 + catalog MCP. This Worker /v1/mesh/* PROXY to aziel-runtime via AZIEL_RUNTIME. Suite mesh default OFF. QNM-BUILD-1.0 live|locked|isolated. QNS-CD-1.0 photon QNS1 packet transfer is a hub cite / Worker mesh cross-map only (local qnsd in qnm-node; no public qnsd proxy; not a Softwares-tab product). SPLIT-THE-WIRES-1.0 (tick vs 777s gate). COLD-COPY-SURVIVAL-1.0 (multiply copies; no live body sync). No Node Gate. No auto-heal. Not anonymity. Software tether, not a VPN. Author Aziel Eliab.
+description: Use when preferring a central Worker, peer-syncing hash-chained work while it is down, reconciling on restore, or minting lattice tips across GodLock / Aziel Digital Library / product Workers. Dual surface: Worker /v1 + catalog MCP. This Worker /v1/mesh/* PROXY to aziel-runtime via AZIEL_RUNTIME. Suite mesh default OFF. QNM-BUILD-1.0 live|locked|isolated. QNS-CD-1.0 photon QNS1 packet transfer is a hub cite / Worker mesh cross-map only (local qnsd in qnm-node; no public qnsd proxy; not a Softwares-tab product). SPLIT-THE-WIRES-1.0 (tick vs 777s gate). COLD-COPY-SURVIVAL-1.0 (multiply copies; no live body sync). REHEAL-1.0 (own last good tip + trusted pull or phoenix-WAIT; no neighbor vote-to-fix; chatter live|locked|isolated|tip-hash only). No Node Gate. No auto-heal. Not anonymity. Software tether, not a VPN. Author Aziel Eliab.
 ---
 
 # AzielTether
@@ -70,6 +74,8 @@ Host: \`https://azieltether-download-tracker.vibelock.workers.dev\`
 | POST | \`/v1/wires/tick\` | Tick plane: presence + tip hash only. No body. |
 | POST | \`/v1/wires/payload\` | Gate plane: receiver pull. Cite + lockset. |
 | GET | \`/v1/survival\` | COLD-COPY SURVIVAL law card. |
+| GET | \`/v1/reheal\` | REHEAL law card. Own tip + trusted pull or phoenix-WAIT. |
+| POST | \`/v1/reheal\` | Stateless REHEAL decide. Neighbor vote-to-fix refused. |
 
 OpenAPI: \`https://azieltether-download-tracker.vibelock.workers.dev/openapi.json\`
 
@@ -403,6 +409,19 @@ function openapiSpec(origin) {
           responses: { "200": { description: "survival" } },
         },
       },
+      "/v1/reheal": {
+        get: {
+          operationId: "azieltether_reheal",
+          summary: "REHEAL law card. Own tip + trusted pull or phoenix-WAIT.",
+          responses: { "200": { description: "reheal" } },
+        },
+        post: {
+          operationId: "azieltether_reheal_decide",
+          summary: "Stateless REHEAL decide. Neighbor vote-to-fix refused.",
+          requestBody: itemBody,
+          responses: { "200": { description: "reheal" } },
+        },
+      },
     },
   };
 }
@@ -448,6 +467,7 @@ function mcpTools() {
     { name: "azieltether_tip", description: "Mint or verify a lattice tip.", inputSchema: { type: "object", additionalProperties: true } },
     { name: "azieltether_verify", description: "Walk hashes and prev links.", inputSchema: { type: "object", additionalProperties: true } },
     { name: "azieltether_wires", description: "SPLIT THE WIRES + COLD-COPY SURVIVAL law card.", inputSchema: { type: "object" } },
+    { name: "azieltether_reheal", description: "REHEAL law card. Own tip + trusted pull or phoenix-WAIT.", inputSchema: { type: "object" } },
   ];
 }
 
@@ -511,6 +531,8 @@ async function handleMcp(request) {
       payload = await verifyItems(asItems(args));
     } else if (name === "azieltether_wires") {
       payload = wiresCard();
+    } else if (name === "azieltether_reheal") {
+      payload = { ...wiresCard(), spec: REHEAL_SPEC, law: REHEAL_LAW };
     } else {
       payload = { error: "unknown tool", name };
     }
@@ -552,6 +574,7 @@ export async function handleRuntimeApi(request, url) {
       mesh: meshPointer(),
       wires_spec: WIRES_SPEC,
       survival_spec: SURVIVAL_SPEC,
+      reheal_spec: REHEAL_SPEC,
     });
   }
   if ((path === "/v1/example" || path === "/v1/example/") && request.method === "GET") {
@@ -719,11 +742,48 @@ export async function handleRuntimeApi(request, url) {
     const body = (await readBody()) || {};
     return json({ product: PRODUCT, version: VERSION, ...acceptPayload(body, "gate"), limitation: LIMITATION, stored: false, kv_increment: false });
   }
+  if (path === "/v1/reheal" && request.method === "GET") {
+    const card = wiresCard();
+    return json({
+      ...card,
+      product: PRODUCT,
+      version: VERSION,
+      spec: REHEAL_SPEC,
+      law: REHEAL_LAW,
+      limitation: LIMITATION,
+      stored: false,
+      kv_increment: false,
+    });
+  }
+  if (path === "/v1/reheal" && request.method === "POST") {
+    const body = (await readBody()) || {};
+    const vote = refuseVoteToFix(body.votes_for || 0, body.neighbor_fix);
+    const decided = decideReheal({
+      ownTip: body.own_tip || body.tip_hash,
+      cite: body.cite,
+      lockset: body.lockset,
+      digestOk: body.digest_ok === true,
+      votesFor: body.votes_for || 0,
+      neighborFix: body.neighbor_fix,
+      chatter: body.chatter,
+    });
+    return json({
+      product: PRODUCT,
+      version: VERSION,
+      author: AUTHOR,
+      spec: REHEAL_SPEC,
+      vote,
+      reheal: decided,
+      stored: false,
+      kv_increment: false,
+      limitation: LIMITATION,
+    });
+  }
   if (path.startsWith("/v1/") || path === "/v1") {
     return json(
       {
         error: "not found",
-        hint: "GET /v1/health  GET /v1/skill  GET /v1/mesh  GET /v1/wires  GET /v1/survival  POST /v1/wires/tick  POST /v1/wires/payload  POST /v1/ingest  POST /v1/pulse  POST /v1/reconcile  POST /v1/dual-chain  POST /v1/tip  POST /v1/verify",
+        hint: "GET /v1/health  GET /v1/skill  GET /v1/mesh  GET /v1/wires  GET /v1/survival  GET /v1/reheal  POST /v1/wires/tick  POST /v1/wires/payload  POST /v1/reheal  POST /v1/ingest  POST /v1/pulse  POST /v1/reconcile  POST /v1/dual-chain  POST /v1/tip  POST /v1/verify",
         limitation: LIMITATION,
       },
       404,

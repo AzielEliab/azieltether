@@ -71,7 +71,7 @@ Direct tarball (also counted):
 - Stats: [https://azieltether-download-tracker.vibelock.workers.dev/stats](https://azieltether-download-tracker.vibelock.workers.dev/stats)
 - Skill: [https://azieltether-download-tracker.vibelock.workers.dev/v1/skill](https://azieltether-download-tracker.vibelock.workers.dev/v1/skill)
 - Suite mesh proxy: [https://azieltether-download-tracker.vibelock.workers.dev/v1/mesh](https://azieltether-download-tracker.vibelock.workers.dev/v1/mesh) — default OFF; QNM live / locked / isolated; QNS-CD-1.0 hub cite (photon QNS1 packet transfer; no public qnsd proxy)
-- Wires + survival: [https://azieltether-download-tracker.vibelock.workers.dev/v1/wires](https://azieltether-download-tracker.vibelock.workers.dev/v1/wires) · [https://azieltether-download-tracker.vibelock.workers.dev/v1/survival](https://azieltether-download-tracker.vibelock.workers.dev/v1/survival)
+- Wires + survival + reheal: [https://azieltether-download-tracker.vibelock.workers.dev/v1/wires](https://azieltether-download-tracker.vibelock.workers.dev/v1/wires) · [https://azieltether-download-tracker.vibelock.workers.dev/v1/survival](https://azieltether-download-tracker.vibelock.workers.dev/v1/survival) · [https://azieltether-download-tracker.vibelock.workers.dev/v1/reheal](https://azieltether-download-tracker.vibelock.workers.dev/v1/reheal)
 - OpenAPI: [https://azieltether-download-tracker.vibelock.workers.dev/openapi.json](https://azieltether-download-tracker.vibelock.workers.dev/openapi.json)
 - GitHub: [https://github.com/AzielEliab/azieltether](https://github.com/AzielEliab/azieltether)
 
@@ -102,9 +102,13 @@ Isolated counter: Worker `azieltether-download-tracker`, KV `AZIELTETHER_DOWNLOA
    local copies. Refuse live body sync across the network. Tips are
    expensive to erase. A single-server pull cannot kill local copies.
    Hash-absolute. Data outlives creators.
+8. **REHEAL** (`REHEAL-1.0`). Heal from your own last good tip plus a
+   verified trusted pull, or phoenix-WAIT. No neighbor vote-to-fix.
+   Allowed chatter is live / locked / isolated / tip-hash only.
 
 Law: [docs/SPLIT-THE-WIRES.md](docs/SPLIT-THE-WIRES.md) ·
-[docs/COLD-COPY-SURVIVAL.md](docs/COLD-COPY-SURVIVAL.md)
+[docs/COLD-COPY-SURVIVAL.md](docs/COLD-COPY-SURVIVAL.md) ·
+[docs/REHEAL.md](docs/REHEAL.md)
 
 Sibling products (AZ-CLCE / SPRE) already append
 `~/.az-clce/tether-queue.jsonl`. `azieltether harvest` copies those
@@ -128,6 +132,7 @@ azieltether tip --surface worker
 azieltether harvest
 azieltether wires
 azieltether survival
+azieltether reheal
 ```
 
 ## iPhone & Android
@@ -164,6 +169,7 @@ tests/                       pytest
 docs/whitepaper.md           September 2026 spec
 docs/SPLIT-THE-WIRES.md      tick vs 777s gate
 docs/COLD-COPY-SURVIVAL.md   multiply copies; no live body sync
+docs/REHEAL.md               own tip + trusted pull or phoenix-WAIT
 examples/                    pulse and reconcile demo
 workers/download-tracker/    Cloudflare Worker + wrangler.toml
 mobile/                      Flutter iPhone + Android (`flutter create .`)

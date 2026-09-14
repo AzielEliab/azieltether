@@ -86,6 +86,20 @@ def test_split_wires_and_cold_copy_survival_on_worker() -> None:
     assert "COLD-COPY SURVIVAL" in (ROOT / "docs/COLD-COPY-SURVIVAL.md").read_text(encoding="utf-8")
     assert "SPLIT THE WIRES" in WORKER_README
     assert "COLD-COPY-SURVIVAL-1.0" in WORKER_README
+    assert 'REHEAL_SPEC = "REHEAL-1.0"' in WIRES
+    assert "PHOENIX_WAIT = \"phoenix-WAIT\"" in WIRES
+    assert "NEIGHBOR_VOTE_TO_FIX = false" in WIRES
+    assert "export function decideReheal" in WIRES
+    assert "export function refuseVoteToFix" in WIRES
+    assert "REHEAL-1.0" in MESH
+    assert "MESH_PHOENIX_WAIT" in MESH
+    assert "allowed_chatter" in MESH
+    assert "/v1/reheal" in RUNTIME
+    assert "REHEAL-1.0" in INDEX
+    assert "REHEAL-1.0" in README
+    assert "REHEAL-1.0" in SKILL
+    assert "phoenix-WAIT" in (ROOT / "docs/REHEAL.md").read_text(encoding="utf-8")
+    assert "REHEAL-1.0" in WORKER_README
 
 
 def test_mesh_pointer_and_openapi_helpers() -> None:
