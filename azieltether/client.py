@@ -99,6 +99,38 @@ def post_tip(tip: dict[str, Any], *, host: str | None = None) -> dict[str, Any]:
     return http_json(base + "/v1/tip", method="POST", body=tip)
 
 
+def pull_shelf_card(host: str | None = None, *, timeout: float | None = None) -> dict[str, Any]:
+    """GET /v1/shelf — law card. Worker is zero-retention; not a durable store."""
+    base = (host or central_host()).rstrip("/")
+    return http_json(base + "/v1/shelf", timeout=timeout)
+
+
+def http_bytes(url: str, *, timeout: float | None = None) -> dict[str, Any]:
+    """Raw HTTPS/HTTP GET. Used by the shelf client. Never invents a CID."""
+    headers = {"User-Agent": UA, "Accept": "*/*"}
+    req = Request(url, headers=headers, method="GET")
+    try:
+        with urlopen(req, timeout=timeout if timeout is not None else default_timeout()) as resp:
+            data = resp.read()
+            status = getattr(resp, "status", 200)
+    except HTTPError as exc:
+        return {
+            "ok": False,
+            "error": str(exc),
+            "url": url,
+            "http_status": exc.code,
+            "reason": "http",
+        }
+    except (URLError, TimeoutError, OSError, ValueError) as exc:
+        return {"ok": False, "error": str(exc), "url": url, "reason": "network"}
+    return {
+        "ok": True,
+        "bytes": data,
+        "http_status": status,
+        "url": url,
+    }
+
+
 def _peer_urls(peer: str, suffix: str) -> list[str]:
     url = peer.rstrip("/")
     if url.endswith(suffix):

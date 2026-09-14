@@ -43,6 +43,8 @@ def test_ui_get_root_and_genesis(tmp_path) -> None:
         assert b"COLD-COPY SURVIVAL" in html
         assert b"REHEAL" in html
         assert b"phoenix-WAIT" in html
+        assert b"COLD-SHELF TETHER" in html
+        assert b"15:20" not in html
         with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=5) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
         assert payload["ok"] is True
@@ -110,6 +112,20 @@ def test_ui_get_root_and_genesis(tmp_path) -> None:
             raise AssertionError("vote-to-fix should refuse")
         except urllib.error.HTTPError as exc:
             assert exc.code == 400
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{port}/api/shelf-seal",
+            data=b"{}",
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            shelf = json.loads(resp.read().decode("utf-8"))
+        assert shelf["ok"] is True
+        assert shelf["code"] == "SHELF-SEAL"
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/shelf", timeout=5) as resp:
+            card = json.loads(resp.read().decode("utf-8"))
+        assert card["shelf"]["spec"] == "COLD-SHELF-TETHER-1.0"
+        assert card["shelf"]["ipfs"] is False
     finally:
         httpd.shutdown()
         httpd.server_close()

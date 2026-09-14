@@ -41,6 +41,11 @@ Python 3.10+. Core is stdlib only. pytest is the dev extra.
 10. **REHEAL.** Own last good tip + verified trusted pull or
     phoenix-WAIT. No neighbor vote-to-fix. Chatter is
     live/locked/isolated/tip-hash only.
+11. **COLD-SHELF TETHER.** Last local shelf when the Worker is dead.
+    Hash reconcile on restore. SHA-256 manifest verify. No rewrite
+    key. No lie-to-survive. Do not claim live multi-homed DNS or
+    invent IPFS CIDs. Person @id stays
+    https://www.azieleliab.com/#aziel.
 
 ## Where to change things
 
@@ -48,6 +53,8 @@ Python 3.10+. Core is stdlib only. pytest is the dev extra.
 - Suite mesh / QNM Live Nodes + QNS-CD-1.0 cross-map: `workers/download-tracker/src/mesh.js` (`/v1/mesh/*` PROXY to aziel-runtime).
 - SPLIT THE WIRES + COLD-COPY SURVIVAL: `azieltether/wires.py`, `azieltether/survival.py`, `workers/download-tracker/src/wires.js`.
 - REHEAL: `azieltether/reheal.py` (own tip + trusted pull or phoenix-WAIT).
+- COLD-SHELF TETHER: `azieltether/shelf.py` (local seal, HTTPS+SHA-256
+  fetch, USB airgap). Worker law card: `GET /v1/shelf`.
 
 ## License of contributions
 

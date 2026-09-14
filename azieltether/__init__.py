@@ -23,6 +23,7 @@ from azieltether.errors import (
     ItemError,
     ProtocolError,
     RehealError,
+    ShelfError,
     SurvivalError,
     WiresError,
 )
@@ -30,6 +31,7 @@ from azieltether.item import GENESIS_PREV_HASH, Item, digest_item
 from azieltether.lattice import SURFACES, LatticeTip, tip_from_chain
 from azieltether.protocol import MODE_PEER, MODE_PREFER, MODE_RECONCILE, pulse, reconcile, reheal
 from azieltether.reheal import REHEAL_SPEC
+from azieltether.shelf import SHELF_SPEC
 from azieltether.survival import SURVIVAL_SPEC
 from azieltether.wires import WIRES_SPEC
 
@@ -51,6 +53,8 @@ __all__ = [
     "ProtocolError",
     "REHEAL_SPEC",
     "RehealError",
+    "SHELF_SPEC",
+    "ShelfError",
     "SURFACES",
     "SURVIVAL_SPEC",
     "SurvivalError",

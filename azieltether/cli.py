@@ -17,6 +17,7 @@
     azieltether wires
     azieltether survival
     azieltether reheal
+    azieltether shelf [status|seal|pull|sync|usb|usb-import|slot]
     azieltether status
     azieltether node-id
 
@@ -35,7 +36,15 @@ from typing import Sequence
 from azieltether import __version__
 from azieltether.errors import AzielTetherError, ChainError, ItemError
 from azieltether.lattice import SURFACES, bind_surfaces, mint_tip
-from azieltether.protocol import LIMITATION, dual_chain_report, pulse, reconcile, reheal, wires_report
+from azieltether.protocol import (
+    LIMITATION,
+    dual_chain_report,
+    pulse,
+    reconcile,
+    reheal,
+    shelf_sync,
+    wires_report,
+)
 from azieltether.queues import harvest
 from azieltether.store import Store
 
@@ -112,6 +121,25 @@ def _build_parser() -> argparse.ArgumentParser:
     p_rh.add_argument("--lockset", default=None, help="Sealed lockset hash.")
     p_rh.add_argument("--file", default=None, help="JSON items for a verified trusted pull.")
     p_rh.add_argument("--votes", type=int, default=0, help="Neighbor votes (always refused).")
+
+    p_sh = sub.add_parser(
+        "shelf",
+        help="COLD-SHELF-TETHER: seal / pull / sync / USB. SHA-256 verify. No rewrite key.",
+    )
+    p_sh.add_argument(
+        "action",
+        nargs="?",
+        default="status",
+        choices=["status", "seal", "pull", "sync", "usb", "usb-import", "slot"],
+        help="status (default), seal, pull, sync, usb, usb-import, slot",
+    )
+    p_sh.add_argument("--url", action="append", default=[], help="Shelf URL or local path (repeatable).")
+    p_sh.add_argument("--sha256", default=None, dest="sha256", help="Expected SHA-256 (64 lowercase hex).")
+    p_sh.add_argument("--dest", default=None, help="USB export directory.")
+    p_sh.add_argument("--src", default=None, help="USB import directory.")
+    p_sh.add_argument("--host", default=None, help="Override central Worker host.")
+    p_sh.add_argument("--no-probe", action="store_true", help="Do not call the Worker.")
+    p_sh.add_argument("--name", default=None, help="MOCK/SLOT name to refuse (ipfs, multihome_dns, …).")
 
     p_imp = sub.add_parser("import", help="Import a JSON export.")
     p_imp.add_argument("file")
@@ -318,6 +346,75 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
             )
             return 0
+
+        if args.cmd == "shelf":
+            from azieltether.shelf import (
+                export_usb,
+                fetch_manifest,
+                import_usb,
+                law_card,
+                load_last_shelf,
+                refuse_slot,
+                seal_shelf,
+            )
+
+            action = args.action
+            if action == "slot":
+                rec = refuse_slot(args.name or "ipfs")
+                _print_json(rec)
+                return 0 if rec.get("ok") else 1
+            if action == "status":
+                last = load_last_shelf(st)
+                _print_json(
+                    {
+                        "ok": True,
+                        "author": "Aziel Eliab",
+                        "shelf": law_card(),
+                        "last": {k: v for k, v in last.items() if k != "manifest"} if last.get("ok") else last,
+                        "manifest": (last.get("manifest") if last.get("ok") else None),
+                    }
+                )
+                return 0
+            if action == "seal":
+                _print_json(seal_shelf(st))
+                return 0
+            if action == "pull":
+                if not args.url:
+                    _print_json({"ok": False, "error": "shelf pull needs --url", "limitation": LIMITATION})
+                    return 1
+                for url in args.url:
+                    st.add_shelf_url(url)
+                rec = fetch_manifest(args.url[0], expected_sha256=args.sha256)
+                if rec.get("ok") and rec.get("manifest", {}).get("items"):
+                    from azieltether.shelf import merge_verified_items
+
+                    rec["merge"] = merge_verified_items(st, rec["manifest"]["items"])
+                    rec["seal"] = seal_shelf(st)
+                _print_json({k: v for k, v in rec.items() if k != "bytes"})
+                return 0 if rec.get("ok") else 1
+            if action == "sync":
+                for url in args.url:
+                    st.add_shelf_url(url)
+                rec = shelf_sync(
+                    st,
+                    urls=args.url,
+                    expected_sha256=args.sha256,
+                    host=args.host,
+                    probe=not args.no_probe,
+                )
+                _print_json(rec)
+                return 0 if rec.get("ok") else 1
+            if action == "usb":
+                dest = args.dest or str(st.home / "usb-shelf")
+                _print_json(export_usb(st, dest))
+                return 0
+            if action == "usb-import":
+                if not args.src:
+                    _print_json({"ok": False, "error": "shelf usb-import needs --src", "limitation": LIMITATION})
+                    return 1
+                rec = import_usb(st, args.src, expected_sha256=args.sha256)
+                _print_json(rec)
+                return 0 if rec.get("ok") else 1
 
         if args.cmd == "import":
             from azieltether.jsonio import import_json

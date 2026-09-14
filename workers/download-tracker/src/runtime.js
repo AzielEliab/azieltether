@@ -9,16 +9,22 @@ import { meshOpenApiPaths, meshPointer } from "./mesh.js";
 import {
   REHEAL_LAW,
   REHEAL_SPEC,
+  SHELF_LAW,
+  SHELF_SPEC,
   SURVIVAL_LAW,
   SURVIVAL_SPEC,
   WIRES_LAW,
   WIRES_SPEC,
   decideReheal,
+  refuseLieToSurvive,
+  refuseRewriteKey,
+  refuseShelfSlot,
   refuseVoteToFix,
   acceptPayload,
   acceptTick,
   refuseLiveBodySync,
   refusePushFanout,
+  shelfCard,
   wiresCard,
 } from "./wires.js";
 
@@ -36,7 +42,7 @@ const LIMITATION =
 
 const SKILL = `---
 name: AzielTether
-description: Use when preferring a central Worker, peer-syncing hash-chained work while it is down, reconciling on restore, or minting lattice tips across GodLock / Aziel Digital Library / product Workers. Dual surface: Worker /v1 + catalog MCP. This Worker /v1/mesh/* PROXY to aziel-runtime via AZIEL_RUNTIME. Suite mesh default OFF. QNM-BUILD-1.0 live|locked|isolated. QNS-CD-1.0 photon QNS1 packet transfer is a hub cite / Worker mesh cross-map only (local qnsd in qnm-node; no public qnsd proxy; not a Softwares-tab product). SPLIT-THE-WIRES-1.0 (tick vs 777s gate). COLD-COPY-SURVIVAL-1.0 (multiply copies; no live body sync). REHEAL-1.0 (own last good tip + trusted pull or phoenix-WAIT; no neighbor vote-to-fix; chatter live|locked|isolated|tip-hash only). No Node Gate. No auto-heal. Not anonymity. Software tether, not a VPN. Author Aziel Eliab.
+description: Use when preferring a central Worker, peer-syncing hash-chained work while it is down, reconciling on restore, or minting lattice tips across GodLock / Aziel Digital Library / product Workers. Dual surface: Worker /v1 + catalog MCP. This Worker /v1/mesh/* PROXY to aziel-runtime via AZIEL_RUNTIME. Suite mesh default OFF. QNM-BUILD-1.0 live|locked|isolated. QNS-CD-1.0 photon QNS1 packet transfer is a hub cite / Worker mesh cross-map only (local qnsd in qnm-node; no public qnsd proxy; not a Softwares-tab product). SPLIT-THE-WIRES-1.0 (tick vs 777s gate). COLD-COPY-SURVIVAL-1.0 (multiply copies; no live body sync). REHEAL-1.0 (own last good tip + trusted pull or phoenix-WAIT; no neighbor vote-to-fix; chatter live|locked|isolated|tip-hash only). COLD-SHELF-TETHER-1.0 (Worker up: ingest-as-receipt then seal; Worker dead: last local shelf; restore: hash reconcile; SHA-256 manifest from operator URLs; no rewrite key; no lie-to-survive; multi-homed DNS / IPFS / auto-publish / AZ Generator are MOCK/SLOT). No Node Gate. No auto-heal. Not anonymity. Software tether, not a VPN. Author Aziel Eliab.
 ---
 
 # AzielTether
@@ -76,6 +82,8 @@ Host: \`https://azieltether-download-tracker.vibelock.workers.dev\`
 | GET | \`/v1/survival\` | COLD-COPY SURVIVAL law card. |
 | GET | \`/v1/reheal\` | REHEAL law card. Own tip + trusted pull or phoenix-WAIT. |
 | POST | \`/v1/reheal\` | Stateless REHEAL decide. Neighbor vote-to-fix refused. |
+| GET | \`/v1/shelf\` | COLD-SHELF-TETHER law card. Zero-retention. Not a durable store. |
+| POST | \`/v1/shelf/verify\` | Stateless manifest rewrite/lie/slot refuse + hash echo. |
 
 OpenAPI: \`https://azieltether-download-tracker.vibelock.workers.dev/openapi.json\`
 
@@ -422,6 +430,21 @@ function openapiSpec(origin) {
           responses: { "200": { description: "reheal" } },
         },
       },
+      "/v1/shelf": {
+        get: {
+          operationId: "azieltether_shelf",
+          summary: "COLD-SHELF-TETHER law card. Zero-retention. Not a durable store.",
+          responses: { "200": { description: "shelf" } },
+        },
+      },
+      "/v1/shelf/verify": {
+        post: {
+          operationId: "azieltether_shelf_verify",
+          summary: "Refuse rewrite key, lie-to-survive, and MOCK slots. Echo posted sha256.",
+          requestBody: itemBody,
+          responses: { "200": { description: "shelf" } },
+        },
+      },
     },
   };
 }
@@ -468,6 +491,7 @@ function mcpTools() {
     { name: "azieltether_verify", description: "Walk hashes and prev links.", inputSchema: { type: "object", additionalProperties: true } },
     { name: "azieltether_wires", description: "SPLIT THE WIRES + COLD-COPY SURVIVAL law card.", inputSchema: { type: "object" } },
     { name: "azieltether_reheal", description: "REHEAL law card. Own tip + trusted pull or phoenix-WAIT.", inputSchema: { type: "object" } },
+    { name: "azieltether_shelf", description: "COLD-SHELF-TETHER law card. Zero-retention. MOCK slots refused.", inputSchema: { type: "object" } },
   ];
 }
 
@@ -533,6 +557,8 @@ async function handleMcp(request) {
       payload = wiresCard();
     } else if (name === "azieltether_reheal") {
       payload = { ...wiresCard(), spec: REHEAL_SPEC, law: REHEAL_LAW };
+    } else if (name === "azieltether_shelf") {
+      payload = shelfCard();
     } else {
       payload = { error: "unknown tool", name };
     }
@@ -575,6 +601,7 @@ export async function handleRuntimeApi(request, url) {
       wires_spec: WIRES_SPEC,
       survival_spec: SURVIVAL_SPEC,
       reheal_spec: REHEAL_SPEC,
+      shelf_spec: SHELF_SPEC,
     });
   }
   if ((path === "/v1/example" || path === "/v1/example/") && request.method === "GET") {
@@ -755,6 +782,46 @@ export async function handleRuntimeApi(request, url) {
       kv_increment: false,
     });
   }
+  if (path === "/v1/shelf" && request.method === "GET") {
+    return json({
+      ...shelfCard(),
+      product: PRODUCT,
+      version: VERSION,
+      limitation: LIMITATION,
+      stored: false,
+      kv_increment: false,
+      law: SHELF_LAW,
+    });
+  }
+  if (path === "/v1/shelf/verify" && request.method === "POST") {
+    const body = (await readBody()) || {};
+    const rewrite = refuseRewriteKey(body);
+    if (!rewrite.ok) return json({ ...rewrite, product: PRODUCT, version: VERSION, limitation: LIMITATION });
+    const lie = refuseLieToSurvive(body);
+    if (!lie.ok) return json({ ...lie, product: PRODUCT, version: VERSION, limitation: LIMITATION });
+    if (body.slot || body.ipfs || body.cid || body.multihome_dns) {
+      return json({
+        ...refuseShelfSlot(body.slot || (body.cid || body.ipfs ? "ipfs" : "multihome_dns")),
+        product: PRODUCT,
+        version: VERSION,
+        limitation: LIMITATION,
+      });
+    }
+    return json({
+      ok: true,
+      product: PRODUCT,
+      version: VERSION,
+      author: AUTHOR,
+      spec: SHELF_SPEC,
+      code: "SHELF-VERIFY-ECHO",
+      sha256: body.sha256 || null,
+      stored: false,
+      kv_increment: false,
+      rewrite_key: false,
+      note: "Stateless echo. Durable shelf lives on the downloaded node / USB / operator URL.",
+      limitation: LIMITATION,
+    });
+  }
   if (path === "/v1/reheal" && request.method === "POST") {
     const body = (await readBody()) || {};
     const vote = refuseVoteToFix(body.votes_for || 0, body.neighbor_fix);
@@ -783,7 +850,7 @@ export async function handleRuntimeApi(request, url) {
     return json(
       {
         error: "not found",
-        hint: "GET /v1/health  GET /v1/skill  GET /v1/mesh  GET /v1/wires  GET /v1/survival  GET /v1/reheal  POST /v1/wires/tick  POST /v1/wires/payload  POST /v1/reheal  POST /v1/ingest  POST /v1/pulse  POST /v1/reconcile  POST /v1/dual-chain  POST /v1/tip  POST /v1/verify",
+        hint: "GET /v1/health  GET /v1/skill  GET /v1/mesh  GET /v1/wires  GET /v1/survival  GET /v1/reheal  GET /v1/shelf  POST /v1/shelf/verify  POST /v1/wires/tick  POST /v1/wires/payload  POST /v1/reheal  POST /v1/ingest  POST /v1/pulse  POST /v1/reconcile  POST /v1/dual-chain  POST /v1/tip  POST /v1/verify",
         limitation: LIMITATION,
       },
       404,

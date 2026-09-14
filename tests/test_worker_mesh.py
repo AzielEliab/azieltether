@@ -100,6 +100,25 @@ def test_split_wires_and_cold_copy_survival_on_worker() -> None:
     assert "REHEAL-1.0" in SKILL
     assert "phoenix-WAIT" in (ROOT / "docs/REHEAL.md").read_text(encoding="utf-8")
     assert "REHEAL-1.0" in WORKER_README
+    assert 'SHELF_SPEC = "COLD-SHELF-TETHER-1.0"' in WIRES
+    assert "export function shelfCard" in WIRES
+    assert "export function refuseRewriteKey" in WIRES
+    assert "export function refuseLieToSurvive" in WIRES
+    assert "SHELF-SLOT-IPFS" in WIRES
+    assert "SHELF-REWRITE-REFUSED" in WIRES
+    assert "SHELF-LIE-REFUSED" in WIRES
+    assert "https://www.azieleliab.com/#aziel" in WIRES
+    assert "CROSS-NETWORK-SURVIVAL-1.0" in WIRES
+    assert "NO-LIE-NO-REWRITE-1.0" in WIRES
+    assert "/v1/shelf" in RUNTIME
+    assert "/v1/shelf/verify" in RUNTIME
+    assert "COLD-SHELF-TETHER-1.0" in MESH
+    assert "COLD-SHELF-TETHER-1.0" in INDEX
+    assert "COLD-SHELF-TETHER-1.0" in README
+    assert "COLD-SHELF-TETHER-1.0" in SKILL
+    assert "CROSS-NETWORK-SURVIVAL" in (ROOT / "docs/COLD-SHELF-TETHER.md").read_text(encoding="utf-8")
+    assert "NO-LIE" in (ROOT / "docs/COLD-SHELF-TETHER.md").read_text(encoding="utf-8")
+    assert "COLD-SHELF-TETHER-1.0" in WORKER_README
 
 
 def test_mesh_pointer_and_openapi_helpers() -> None:

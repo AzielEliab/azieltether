@@ -69,3 +69,14 @@ def test_cli_wires_and_survival(tmp_path: Path, capsys) -> None:
     assert main(["--home", str(home), "survival"]) == 0
     surv = json.loads(capsys.readouterr().out)
     assert surv["multiply"]["count"] >= 3
+    assert main(["--home", str(home), "shelf"]) == 0
+    shelf = json.loads(capsys.readouterr().out)
+    assert shelf["shelf"]["spec"] == "COLD-SHELF-TETHER-1.0"
+    assert shelf["shelf"]["person_id"] == "https://www.azieleliab.com/#aziel"
+    assert main(["--home", str(home), "shelf", "seal"]) == 0
+    sealed = json.loads(capsys.readouterr().out)
+    assert sealed["ok"] is True
+    assert sealed["code"] == "SHELF-SEAL"
+    assert main(["--home", str(home), "shelf", "slot", "--name", "ipfs"]) == 1
+    slot = json.loads(capsys.readouterr().out)
+    assert slot["code"] == "SHELF-SLOT-IPFS"
