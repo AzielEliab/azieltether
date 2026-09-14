@@ -105,6 +105,7 @@ def test_split_wires_and_cold_copy_survival_on_worker() -> None:
     assert "export function refuseRewriteKey" in WIRES
     assert "export function refuseLieToSurvive" in WIRES
     assert "SHELF-SLOT-IPFS" in WIRES
+    assert "SHELF-SLOT-ZENODO-DOI" in WIRES
     assert "SHELF-REWRITE-REFUSED" in WIRES
     assert "SHELF-LIE-REFUSED" in WIRES
     assert "https://www.azieleliab.com/#aziel" in WIRES

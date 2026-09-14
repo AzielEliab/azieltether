@@ -30,7 +30,7 @@ from typing import Any, Iterable, Mapping, Sequence
 from urllib.parse import urlparse
 
 from azieltether.canon import canonical_json, require_hex64
-from azieltether.errors import AppendOnlyError, ShelfError
+from azieltether.errors import AppendOnlyError
 from azieltether.item import utc_now
 from azieltether.survival import item_digest_ok
 from azieltether.wires import cite_ok, hash_holds
@@ -43,6 +43,21 @@ SHELF_AUTHOR = "Aziel Eliab"
 PERSON_ID = "https://www.azieleliab.com/#aziel"
 PRODUCT = "azieltether"
 SHELF_URLS_ENV = "AZIELTETHER_SHELF_URLS"
+ZENODO_DOI_ENV = "AZIELTETHER_ZENODO_DOI"
+ZENODO_URL_ENV = "AZIELTETHER_ZENODO_URL"
+
+# Operator planes. A is the same Cloudflare tunnel — it does not survive a CF yank.
+PLANE_A = "A"
+PLANE_B = "B"
+PLANE_C = "C"
+PLANE_A_HUBS = (
+    "https://azieltether-download-tracker.vibelock.workers.dev",
+    "https://azclce-download-tracker.vibelock.workers.dev",
+    "https://temporallock-download-tracker.vibelock.workers.dev",
+    "https://staticclock-download-tracker.vibelock.workers.dev",
+)
+PLANE_A_TUNNEL = "vibelock.workers.dev"
+PLANE_A_SURVIVES_CF_YANK = False
 REWRITE_KEYS = frozenset(
     {
         "rewrite_key",
@@ -70,6 +85,8 @@ REAL = (
     "refuse_hash_mismatch",
     "re_expand_from_archive",
     "no_fan_unverified",
+    "plane_a_probe",
+    "plane_c_usb_local",
 )
 
 SLOTS = {
@@ -78,6 +95,8 @@ SLOTS = {
     "auto_publish": "SHELF-SLOT-AUTO-PUBLISH",
     "anycast": "SHELF-SLOT-ANYCAST",
     "az_generator": "SHELF-SLOT-AZ-GENERATOR",
+    "zenodo_doi": "SHELF-SLOT-ZENODO-DOI",
+    "forge_publish": "SHELF-SLOT-FORGE-PUBLISH",
 }
 
 LAWS = (
@@ -98,9 +117,13 @@ LAW = (
     "Fetch/verify a SHA-256 manifest from operator URLs (GitLab/Codeberg "
     "raw, Zenodo file, local path). Hash mismatch refuses. No rewrite key. "
     "No lie-to-survive. Multi-homed DNS, IPFS CIDs, auto-publish, anycast, "
-    "and AZ Generator are MOCK/SLOT. Sister: aziel-corpus "
-    "COLD-MULTI-SHELF-1.0 — cite the same lockset tip hashes. Person @id "
-    "https://www.azieleliab.com/#aziel. Author: Aziel Eliab only."
+    "and AZ Generator are MOCK/SLOT. Operator planes: A = four CF hubs "
+    "on the same tunnel (does not survive a CF yank); B = Zenodo "
+    "tip-pack SLOT until a real DOI is set; C = USB/local cold copy. "
+    "Worker-up pulls A; Worker-down serves last C; restore reconciles "
+    "by hash. Sister: aziel-corpus COLD-MULTI-SHELF-1.0 — cite the same "
+    "lockset tip hashes. Person @id https://www.azieleliab.com/#aziel. "
+    "Author: Aziel Eliab only."
 )
 
 
@@ -143,6 +166,12 @@ def refuse_slot(name: str) -> dict[str, Any]:
         "zenodo_publish": "auto_publish",
         "azgenerator": "az_generator",
         "az_gen": "az_generator",
+        "zenodo": "zenodo_doi",
+        "doi": "zenodo_doi",
+        "plane_b": "zenodo_doi",
+        "forge": "forge_publish",
+        "gitlab": "forge_publish",
+        "codeberg": "forge_publish",
     }
     slot = aliases.get(key, key)
     if slot not in SLOTS:
@@ -158,6 +187,8 @@ def refuse_slot(name: str) -> dict[str, Any]:
         "auto_publish": "Auto-publish to GitLab/Codeberg/Zenodo is not implemented. Operator copies files.",
         "anycast": "Anycast / geo-DNS is not implemented.",
         "az_generator": "AZ Generator is MirageGrid-only. AzielTether refuses the call.",
+        "zenodo_doi": "Plane B Zenodo tip-pack is SLOT until a real DOI is set. No invented DOIs.",
+        "forge_publish": "Auto-publish to a non-GitHub forge is SLOT. Operator copies files (Plane C USB or raw URL).",
     }
     return _refuse(SLOTS[slot], notes[slot], slot=slot, mock=True, live=False)
 
@@ -254,6 +285,129 @@ def refuse_fan(body: Mapping[str, Any] | None = None) -> dict[str, Any]:
             law="NO-FAN",
         )
     return {"ok": True, "code": "SHELF-NO-FAN-OK", "fan": False, "author": SHELF_AUTHOR}
+
+
+def doi_is_live(doi: str | None) -> bool:
+    """True only for a concrete Zenodo DOI. No invented / placeholder values."""
+    text = str(doi or "").strip().lower()
+    if not text:
+        return False
+    banned = ("example", "todo", "fake", "invented", "xxxx", "placeholder", "tbd", "null")
+    if any(b in text for b in banned):
+        return False
+    if not text.startswith("10.") or "/zenodo." not in text:
+        return False
+    rec = text.rsplit("/zenodo.", 1)[-1]
+    if not rec.isdigit() or rec.startswith("0") or int(rec) < 100:
+        return False
+    return True
+
+
+def plane_a_card() -> dict[str, Any]:
+    return {
+        "plane": PLANE_A,
+        "name": "cf-hubs",
+        "hubs": list(PLANE_A_HUBS),
+        "count": len(PLANE_A_HUBS),
+        "tunnel": PLANE_A_TUNNEL,
+        "same_tunnel": True,
+        "survives_cf_yank": PLANE_A_SURVIVES_CF_YANK,
+        "live": True,
+        "note": "Four product Workers on the same Cloudflare tunnel. Worker-up pulls this plane. A CF yank takes all four — that is why Plane C exists.",
+        "author": SHELF_AUTHOR,
+    }
+
+
+def plane_b_status(*, doi: str | None = None, url: str | None = None) -> dict[str, Any]:
+    """Zenodo tip-pack. SLOT until a real DOI is configured. No invented DOIs."""
+    raw_doi = (doi if doi is not None else os.environ.get(ZENODO_DOI_ENV, "")).strip()
+    raw_url = (url if url is not None else os.environ.get(ZENODO_URL_ENV, "")).strip()
+    if not raw_doi and not raw_url:
+        rec = refuse_slot("zenodo_doi")
+        rec["plane"] = PLANE_B
+        rec["name"] = "zenodo-tip-pack"
+        rec["survives_cf_yank"] = True
+        rec["doi_live"] = False
+        return rec
+    if raw_doi and not doi_is_live(raw_doi):
+        return _refuse(
+            "SHELF-DOI-REFUSED",
+            "No invented DOIs. Plane B stays SLOT until a real Zenodo DOI (10.xxxx/zenodo.<id>).",
+            plane=PLANE_B,
+            doi=raw_doi,
+            doi_live=False,
+        )
+    if raw_url and "zenodo.org" not in raw_url.lower():
+        return _refuse(
+            "SHELF-DOI-REFUSED",
+            "Plane B URL must be a zenodo.org file when DOI is LIVE.",
+            plane=PLANE_B,
+            url=raw_url,
+        )
+    return {
+        "ok": True,
+        "code": "SHELF-PLANE-B-LIVE",
+        "plane": PLANE_B,
+        "name": "zenodo-tip-pack",
+        "doi": raw_doi or None,
+        "url": raw_url or None,
+        "doi_live": True,
+        "live": True,
+        "survives_cf_yank": True,
+        "author": SHELF_AUTHOR,
+        "note": "DOI LIVE. Fetch + SHA-256 verify only. Auto-deposit remains SLOT.",
+    }
+
+
+def plane_c_card() -> dict[str, Any]:
+    return {
+        "ok": True,
+        "plane": PLANE_C,
+        "name": "usb-local-cold-copy",
+        "live": True,
+        "survives_cf_yank": True,
+        "forge_publish": False,
+        "forge_publish_slot": SLOTS["forge_publish"],
+        "note": "Last local cold-shelf + USB airgap. Optional non-GitHub forge auto-publish is SLOT; raw HTTPS pull is REAL when the operator sets a URL.",
+        "author": SHELF_AUTHOR,
+    }
+
+
+def pull_plane_a(*, host: str | None = None, timeout: float | None = None) -> dict[str, Any]:
+    """Worker-up: probe the four same-tunnel CF hubs. Ingest stays on this product."""
+    from azieltether.client import probe_health
+
+    hubs = list(PLANE_A_HUBS)
+    if host:
+        extra = host.rstrip("/")
+        if extra not in hubs:
+            hubs = [extra, *hubs]
+    results: list[dict[str, Any]] = []
+    up = 0
+    for hub in hubs:
+        rec = probe_health(hub, timeout=timeout)
+        ok = bool(rec.get("prefer_central"))
+        up += int(ok)
+        results.append({"hub": hub, "ok": ok, "prefer_central": ok})
+    primary = (host or PLANE_A_HUBS[0]).rstrip("/")
+    primary_up = any(r["ok"] and r["hub"].rstrip("/") == primary for r in results) or (
+        any(r["ok"] for r in results[:1])
+    )
+    if host:
+        primary_up = bool(next((r["ok"] for r in results if r["hub"].rstrip("/") == host.rstrip("/")), False))
+    return {
+        "ok": True,
+        "code": "SHELF-PLANE-A",
+        "plane": PLANE_A,
+        "hubs": results,
+        "up": up,
+        "primary": primary,
+        "primary_up": primary_up,
+        "same_tunnel": True,
+        "survives_cf_yank": False,
+        "author": SHELF_AUTHOR,
+        "note": "Same Cloudflare tunnel. Counts are probes, not a durable store.",
+    }
 
 
 def classify_url(url: str) -> str:
@@ -764,6 +918,15 @@ def shelf_sync(
     merged = {"added": 0, "skipped": 0}
     ingest_acks: list[str] = []
     card: dict[str, Any] = {}
+    plane_a_pull: dict[str, Any] = {**plane_a_card(), "pulled": False}
+    plane_b = plane_b_status(
+        doi=incoming["zenodo_doi"] if incoming and "zenodo_doi" in incoming else None,
+        url=incoming["zenodo_url"] if incoming and "zenodo_url" in incoming else None,
+    )
+    if incoming and incoming.get("zenodo_doi") and not plane_b.get("ok"):
+        return plane_b
+    if plane_b.get("ok") and plane_b.get("url"):
+        urls = list(urls or []) + [str(plane_b["url"])]
 
     for url in _configured_urls(st, urls):
         pulled = fetch_manifest(url, expected_sha256=expected_sha256)
@@ -782,7 +945,11 @@ def shelf_sync(
             continue
         merged = merge_verified_items(st, items)
 
+    active_plane = PLANE_C
     if worker_up:
+        if probe:
+            plane_a_pull = pull_plane_a(host=host)
+            plane_a_pull["pulled"] = True
         card = pull_shelf_card(host)
         chain = st.chain()
         tips = bind_surfaces(chain, node_id=st.node_id())
@@ -795,23 +962,25 @@ def shelf_sync(
             rec = ingest_item(item.as_dict(), host=host)
             if rec.get("ok") or rec.get("accepted"):
                 ingest_acks.append(item.hash)
+        active_plane = PLANE_A
         if was_down:
             mode = MODE_RECONCILE
             code = "SHELF-RESTORE"
-            note = "Worker restored. Reconcile by hash. Existing items unchanged."
+            note = "Worker restored. Plane A pull + hash reconcile. Existing items unchanged. Never rewrite."
         else:
             mode = MODE_PREFER
             code = "SHELF-UP"
-            note = "Worker up. Ingest-as-receipt. Local shelf sealed. Worker does not store the chain."
+            note = "Worker up. Plane A (four CF hubs, same tunnel). Ingest-as-receipt. Local Plane C sealed."
     else:
         mode = MODE_PEER
         local = serve_last_local(st)
+        active_plane = PLANE_C
         if local.get("ok"):
             code = "SHELF-DOWN"
-            note = "Worker dead or unprobed. Serving last local cold-shelf."
+            note = "Worker dead or unprobed. Serving last Plane C local cold-shelf."
         else:
             code = local.get("code") or "SHELF-DOWN"
-            note = str(local.get("note") or "Worker down and no local shelf yet.")
+            note = str(local.get("note") or "Worker down and no Plane C shelf yet.")
 
     sealed = seal_shelf(st, ingest_acks=ingest_acks)
     state = st.state()
@@ -852,6 +1021,12 @@ def shelf_sync(
         "rewrite_key": False,
         "lie_to_survive": False,
         "durable_worker_store": False,
+        "active_plane": active_plane,
+        "planes": {
+            "A": plane_a_pull,
+            "B": plane_b,
+            "C": plane_c_card(),
+        },
     }
 
 
@@ -884,7 +1059,9 @@ def export_usb(store: Any, dest: str | Path) -> dict[str, Any]:
         f"manifest.json bytes sha256: {sealed['bytes_sha256']}\n"
         "On the airgapped machine:\n"
         f"  azieltether shelf usb-import --src {root}\n"
-        "Refuse if SHA-256 mismatches. Multi-homed DNS / IPFS / auto-publish are SLOT.\n"
+        "Refuse if SHA-256 mismatches. Multi-homed DNS / IPFS / auto-publish / invented DOIs are SLOT.\n"
+        "Planes: A = four CF hubs same tunnel (does not survive CF yank). "
+        "B = Zenodo SLOT until a real DOI. C = this USB / last local copy.\n"
     )
     (root / "README.txt").write_text(readme, encoding="utf-8")
     return {
@@ -986,6 +1163,11 @@ def law_card() -> dict[str, Any]:
         "auto_publish": False,
         "anycast": False,
         "az_generator": False,
+        "planes": {
+            "A": plane_a_card(),
+            "B": plane_b_status(),
+            "C": plane_c_card(),
+        },
         "real": list(REAL),
         "mock": sorted(SLOTS.keys()),
         "slots": {k: {"code": v, "live": False} for k, v in SLOTS.items()},

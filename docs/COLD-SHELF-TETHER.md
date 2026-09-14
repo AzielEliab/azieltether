@@ -22,6 +22,18 @@ URL. This is the tether path, not a second identity and not a VPN.
 The Worker is **zero-retention**. It acknowledges hashes. It does not
 store the chain. Claiming it holds durable tips after a yank is a lie.
 
+## Operator planes
+
+| Plane | What | Survives CF+GitHub yank? | State |
+|-------|------|--------------------------|--------|
+| **A** | Four product Workers on the **same** Cloudflare tunnel (`vibelock.workers.dev`): AzielTether, AZ-CLCE, TemporalLock, StaticClock | No. Same tunnel. | REAL probe + ingest-as-receipt on this product |
+| **B** | Zenodo tip-pack | Yes, if a **real DOI** is set | **SLOT** until `AZIELTETHER_ZENODO_DOI` is a live `10.xxxx/zenodo.<id>`. No invented DOIs. |
+| **C** | Last local cold-shelf + USB airgap | Yes | REAL. Optional non-GitHub forge *publish* is SLOT; raw HTTPS pull is REAL when the operator sets a URL |
+
+Worker-up pulls **Plane A**. Worker-down serves last **Plane C**. Restore
+reconciles by hash (never rewrite). Plane B is pulled only when a real
+Zenodo DOI/URL is configured.
+
 ## Law
 
 1. **Prefer Worker when up.** Probe `GET /v1/health`. Ingest-as-receipt

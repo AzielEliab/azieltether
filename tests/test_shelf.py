@@ -15,9 +15,14 @@ from azieltether.shelf import (
     CROSS_NETWORK_SPEC,
     NO_LIE_SPEC,
     PERSON_ID,
+    PLANE_A_HUBS,
     SHELF_SPEC,
     SISTER_SPEC,
     classify_url,
+    doi_is_live,
+    plane_a_card,
+    plane_b_status,
+    plane_c_card,
     export_usb,
     fetch_manifest,
     import_usb,
@@ -54,6 +59,8 @@ def test_law_card_honest() -> None:
     assert card["ipfs"] is False
     assert card["multihome_dns"] is False
     assert card["az_generator"] is False
+    assert card["planes"]["A"]["survives_cf_yank"] is False
+    assert card["planes"]["C"]["survives_cf_yank"] is True
     assert card["slots"]["ipfs"]["live"] is False
     assert card["slots"]["ipfs"]["code"] == "SHELF-SLOT-IPFS"
 
@@ -65,6 +72,8 @@ def test_refuse_slots() -> None:
     assert refuse_slot("auto_publish")["code"] == "SHELF-SLOT-AUTO-PUBLISH"
     assert refuse_slot("anycast")["code"] == "SHELF-SLOT-ANYCAST"
     assert refuse_slot("az_generator")["code"] == "SHELF-SLOT-AZ-GENERATOR"
+    assert refuse_slot("zenodo_doi")["code"] == "SHELF-SLOT-ZENODO-DOI"
+    assert refuse_slot("forge")["code"] == "SHELF-SLOT-FORGE-PUBLISH"
     assert classify_url("ipfs://QmFakeNotReal") == "ipfs"
     assert classify_url("https://example.test/ipfs/QmFake") == "ipfs"
     assert fetch_manifest("ipfs://QmFakeNotReal")["code"] == "SHELF-SLOT-IPFS"
@@ -138,6 +147,10 @@ def test_up_down_restore_hash_continuity(tmp_path: Path, monkeypatch: pytest.Mon
     up = shelf_sync(st, probe=True)
     assert up["ok"] is True
     assert up["worker_up"] is True
+    assert up["active_plane"] == "A"
+    assert up["planes"]["A"]["same_tunnel"] is True
+    assert up["planes"]["A"]["survives_cf_yank"] is False
+    assert up["planes"]["C"]["survives_cf_yank"] is True
     assert up["mode"] == "prefer-central"
     assert first in up["tip_hashes"]
     sealed_hash = up["sha256"]
@@ -150,6 +163,7 @@ def test_up_down_restore_hash_continuity(tmp_path: Path, monkeypatch: pytest.Mon
     assert down["ok"] is True
     assert down["worker_up"] is False
     assert down["code"] == "SHELF-DOWN"
+    assert down["active_plane"] == "C"
     assert down["sha256"] == sealed_hash
     assert first in down["tip_hashes"]
     local = serve_last_local(st)
@@ -163,6 +177,7 @@ def test_up_down_restore_hash_continuity(tmp_path: Path, monkeypatch: pytest.Mon
     restore = shelf_sync(st, probe=True)
     assert restore["ok"] is True
     assert restore["code"] == "SHELF-RESTORE"
+    assert restore["active_plane"] == "A"
     assert restore["mode"] == "reconcile-on-restore"
     hashes = {i.hash for i in st.chain().items}
     assert first in hashes
@@ -249,3 +264,30 @@ def test_person_id_cannot_be_forked(tmp_path: Path) -> None:
 def test_refuse_delete_shelf(tmp_path: Path) -> None:
     with pytest.raises(AppendOnlyError):
         refuse_delete_shelf(tmp_path / "shelf" / "manifest.json")
+
+
+def test_operator_planes_a_b_c(monkeypatch: pytest.MonkeyPatch) -> None:
+    a = plane_a_card()
+    assert a["count"] == 4
+    assert len(PLANE_A_HUBS) == 4
+    assert a["same_tunnel"] is True
+    assert a["survives_cf_yank"] is False
+    assert all("workers.dev" in h for h in PLANE_A_HUBS)
+    c = plane_c_card()
+    assert c["survives_cf_yank"] is True
+    assert c["forge_publish"] is False
+    monkeypatch.delenv("AZIELTETHER_ZENODO_DOI", raising=False)
+    monkeypatch.delenv("AZIELTETHER_ZENODO_URL", raising=False)
+    b = plane_b_status()
+    assert b["ok"] is False
+    assert b["code"] == "SHELF-SLOT-ZENODO-DOI"
+    assert doi_is_live("") is False
+    assert doi_is_live("10.5281/zenodo.example") is False
+    assert doi_is_live("10.5281/zenodo.0") is False
+    assert doi_is_live("10.5281/zenodo.1") is False
+    assert doi_is_live("10.5281/zenodo.123456") is True
+    invented = plane_b_status(doi="10.5281/zenodo.XXXX")
+    assert invented["code"] == "SHELF-DOI-REFUSED"
+    live = plane_b_status(doi="10.5281/zenodo.123456", url="https://zenodo.org/records/123456/files/shelf.json")
+    assert live["ok"] is True
+    assert live["doi_live"] is True

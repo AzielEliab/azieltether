@@ -36,4 +36,4 @@ class RehealError(ProtocolError):
 
 
 class ShelfError(ProtocolError):
-    """COLD-SHELF-TETHER refused mismatch, rewrite, lie, or a MOCK slot."""
+    """COLD-SHELF-TETHER refused mismatch, rewrite, lie, DOI invent, or a MOCK slot."""

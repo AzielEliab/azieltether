@@ -65,6 +65,8 @@ export const SHELF_SLOTS = Object.freeze({
   auto_publish: "SHELF-SLOT-AUTO-PUBLISH",
   anycast: "SHELF-SLOT-ANYCAST",
   az_generator: "SHELF-SLOT-AZ-GENERATOR",
+  zenodo_doi: "SHELF-SLOT-ZENODO-DOI",
+  forge_publish: "SHELF-SLOT-FORGE-PUBLISH",
 });
 
 function hex64(name, value) {
@@ -421,6 +423,11 @@ export function shelfCard() {
     auto_publish: false,
     anycast: false,
     az_generator: false,
+    planes: {
+      A: { plane: "A", hubs: 4, same_tunnel: true, survives_cf_yank: false, live: true },
+      B: { plane: "B", name: "zenodo-tip-pack", live: false, slot: "SHELF-SLOT-ZENODO-DOI" },
+      C: { plane: "C", name: "usb-local-cold-copy", live: true, survives_cf_yank: true },
+    },
     slots: Object.fromEntries(Object.entries(SHELF_SLOTS).map(([k, v]) => [k, { code: v, live: false }])),
     law: SHELF_LAW,
   };
