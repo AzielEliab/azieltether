@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 from urllib.parse import urlparse
 
-from azieltether.canon import canonical_json, digest_mapping, require_hex64, sha256_hex
+from azieltether.canon import canonical_json, require_hex64
 from azieltether.errors import AppendOnlyError, ShelfError
 from azieltether.item import utc_now
 from azieltether.survival import item_digest_ok
@@ -110,7 +110,8 @@ def sha256_bytes(data: bytes) -> str:
 
 def manifest_digest(doc: Mapping[str, Any]) -> str:
     """SHA-256 of the canonical manifest excluding its own sha256 field."""
-    return digest_mapping(doc)
+    body = {k: v for k, v in dict(doc).items() if k != "sha256"}
+    return hashlib.sha256(canonical_json(body).encode("utf-8")).hexdigest()
 
 
 def _refuse(code: str, note: str, **extra: Any) -> dict[str, Any]:
@@ -511,6 +512,15 @@ def build_shelf_document(
     return body
 
 
+def _item_hashes(items: Sequence[Mapping[str, Any]] | None) -> list[str]:
+    out: list[str] = []
+    for raw in items or []:
+        digest = str(raw.get("hash") or "")
+        if digest:
+            out.append(digest)
+    return out
+
+
 def seal_shelf(store: Any, *, ingest_acks: Sequence[str] | None = None) -> dict[str, Any]:
     """Write the current DAG + tips + lockset into the local cold-shelf."""
     from azieltether.store import Store
@@ -539,6 +549,37 @@ def seal_shelf(store: Any, *, ingest_acks: Sequence[str] | None = None) -> dict[
         tips=tips,
         ingest_acks=ingest_acks,
     )
+    existing = load_last_shelf(st)
+    if existing.get("ok"):
+        prev = existing["manifest"]
+        same_items = _item_hashes(prev.get("items") if isinstance(prev.get("items"), list) else []) == _item_hashes(
+            doc["items"]
+        )
+        same_tips = list(prev.get("tip_hashes") or []) == list(doc["tip_hashes"])
+        if same_items and same_tips:
+            dest = st.shelf_dir
+            manifest_path = dest / "manifest.json"
+            data = manifest_path.read_bytes() if manifest_path.is_file() else b""
+            return {
+                "ok": True,
+                "code": "SHELF-SEAL-UNCHANGED",
+                "spec": SHELF_SPEC,
+                "author": SHELF_AUTHOR,
+                "person_id": PERSON_ID,
+                "path": str(manifest_path),
+                "queue": str(dest / "queue.jsonl"),
+                "sha256": prev.get("sha256") or existing.get("sha256"),
+                "bytes_sha256": sha256_bytes(data) if data else st.state().get("last_shelf_bytes_sha256"),
+                "tip_hashes": list(prev.get("tip_hashes") or []),
+                "lockset_hash": prev.get("lockset_hash") or "",
+                "receipts": len(prev.get("receipts") or []),
+                "items": len(prev.get("items") or []),
+                "sister_spec": SISTER_SPEC,
+                "laws": list(LAWS),
+                "real": list(REAL),
+                "mock": sorted(SLOTS.keys()),
+                "rewritten": False,
+            }
     dest = st.shelf_dir
     dest.mkdir(parents=True, exist_ok=True)
     manifest_path = dest / "manifest.json"
