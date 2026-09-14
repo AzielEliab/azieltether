@@ -59,7 +59,7 @@ same hash contract and are harvested, not rewritten.
 | Mode | When | Action |
 |------|------|--------|
 | prefer-central | Worker `/v1/health` ok | POST unpublished items to `/v1/ingest` |
-| peer-sync-when-down | health fail or `AZIELTETHER_OFFLINE=1` | Exchange items with peer URLs |
+| peer-sync-when-down | health fail or `AZIELTETHER_OFFLINE=1` | Tick presence + tip; receiver pulls on the 777s gate |
 | reconcile-on-restore | central returns | Merge DAG, push unpublished, refresh tips |
 
 Hosted `/v1` is **stateless** and **zero-retention**. It acknowledges
@@ -86,7 +86,29 @@ A tip is `{surface, tip_hash, prev_hash, node_id, created_at, hash}`.
 Surfaces: `worker`, `godlock`, `corpus`, `az-clce`, `temporallock`,
 `staticclock`, `peer`. Publishing a tip is not meshing the surface.
 
-## 6. What this is not
+## 6. SPLIT THE WIRES
+
+Peer sync is two planes that never share a socket.
+
+* **Tick (0.5–1s).** Presence + tip hash. Fixed-size. No body.
+* **Payload (777s gate).** Receiver pulls after cite + lockset.
+  Fail-closed. Clock desync is not yes. Ambiguous tip isolates.
+* Equivocation (same peer, same prev, two tips) ends that peer.
+  Quorum cannot outvote a broken hash.
+* Split brain does not auto-splice. Heartbeat loss is not poison
+  and does not apply the last packet.
+
+See [SPLIT-THE-WIRES.md](SPLIT-THE-WIRES.md).
+
+## 7. COLD-COPY SURVIVAL
+
+Multiply sealed local copies. Refuse live body sync across the
+network. A tip is expensive to erase. A single-server pull cannot
+kill local copies. Poison is hash-absolute. Data outlives creators.
+
+See [COLD-COPY-SURVIVAL.md](COLD-COPY-SURVIVAL.md).
+
+## 8. What this is not
 
 Not a VPN. Not MirageGrid. Not a kernel. Not a truth score. Not a
 backdoor onto godlock.uk or the library. Not Horton. Not Altman.

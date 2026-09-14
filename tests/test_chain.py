@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from azieltether.canon import GENESIS_PREV_HASH
-from azieltether.chain import Chain, detect_dual_chain
-from azieltether.errors import ChainError
+from azieltether.chain import Chain, detect_dual_chain, verify_items
+from azieltether.errors import AppendOnlyError, ChainError
 from azieltether.item import Item
 
 
@@ -81,3 +83,14 @@ def test_az_clce_shaped_item_verifies(tmp_path: Path) -> None:
     chain.append_item(item)
     assert chain.verify().ok
     assert canonical_json({"a": 1, "b": 2})
+
+
+def test_broken_hash_votes_cannot_outvote(tmp_path: Path) -> None:
+    path = tmp_path / "q.jsonl"
+    chain = Chain.genesis(path, payload="a", node_id="n" * 64)
+    broken = dict(chain[0].as_dict())
+    broken["payload"] = "tampered"
+    result = verify_items([broken], votes_for=999)
+    assert result.ok is False
+    with pytest.raises(AppendOnlyError):
+        chain.refuse_erase()

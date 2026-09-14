@@ -71,6 +71,7 @@ Direct tarball (also counted):
 - Stats: [https://azieltether-download-tracker.vibelock.workers.dev/stats](https://azieltether-download-tracker.vibelock.workers.dev/stats)
 - Skill: [https://azieltether-download-tracker.vibelock.workers.dev/v1/skill](https://azieltether-download-tracker.vibelock.workers.dev/v1/skill)
 - Suite mesh proxy: [https://azieltether-download-tracker.vibelock.workers.dev/v1/mesh](https://azieltether-download-tracker.vibelock.workers.dev/v1/mesh) — default OFF; QNM live / locked / isolated; QNS-CD-1.0 hub cite (photon QNS1 packet transfer; no public qnsd proxy)
+- Wires + survival: [https://azieltether-download-tracker.vibelock.workers.dev/v1/wires](https://azieltether-download-tracker.vibelock.workers.dev/v1/wires) · [https://azieltether-download-tracker.vibelock.workers.dev/v1/survival](https://azieltether-download-tracker.vibelock.workers.dev/v1/survival)
 - OpenAPI: [https://azieltether-download-tracker.vibelock.workers.dev/openapi.json](https://azieltether-download-tracker.vibelock.workers.dev/openapi.json)
 - GitHub: [https://github.com/AzielEliab/azieltether](https://github.com/AzielEliab/azieltether)
 
@@ -93,6 +94,17 @@ Isolated counter: Worker `azieltether-download-tracker`, KV `AZIELTETHER_DOWNLOA
    mints a last-known hash for survival across GodLock, Aziel Digital
    Library, and product Workers. Tips are receipts, not a mesh on the
    public boards.
+6. **SPLIT THE WIRES** (`SPLIT-THE-WIRES-1.0`). Fast tick is presence +
+   tip hash only (fixed-size, 0.5–1s). Payload is a receiver pull on a
+   separate 777s gate socket. Update is cite + lockset, fail-closed.
+   Equivocation isolates the peer. Heartbeat loss is not poison.
+7. **COLD-COPY SURVIVAL** (`COLD-COPY-SURVIVAL-1.0`). Multiply sealed
+   local copies. Refuse live body sync across the network. Tips are
+   expensive to erase. A single-server pull cannot kill local copies.
+   Hash-absolute. Data outlives creators.
+
+Law: [docs/SPLIT-THE-WIRES.md](docs/SPLIT-THE-WIRES.md) ·
+[docs/COLD-COPY-SURVIVAL.md](docs/COLD-COPY-SURVIVAL.md)
 
 Sibling products (AZ-CLCE / SPRE) already append
 `~/.az-clce/tether-queue.jsonl`. `azieltether harvest` copies those
@@ -114,6 +126,8 @@ azieltether reconcile
 azieltether dual-chain
 azieltether tip --surface worker
 azieltether harvest
+azieltether wires
+azieltether survival
 ```
 
 ## iPhone & Android
@@ -148,6 +162,8 @@ CLI, and loopback UI.
 azieltether/                 library (item, chain, protocol, lattice, cli, ui)
 tests/                       pytest
 docs/whitepaper.md           September 2026 spec
+docs/SPLIT-THE-WIRES.md      tick vs 777s gate
+docs/COLD-COPY-SURVIVAL.md   multiply copies; no live body sync
 examples/                    pulse and reconcile demo
 workers/download-tracker/    Cloudflare Worker + wrangler.toml
 mobile/                      Flutter iPhone + Android (`flutter create .`)

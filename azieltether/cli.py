@@ -14,6 +14,8 @@
     azieltether dual-chain
     azieltether tip [--surface worker]
     azieltether harvest
+    azieltether wires
+    azieltether survival
     azieltether status
     azieltether node-id
 
@@ -32,7 +34,7 @@ from typing import Sequence
 from azieltether import __version__
 from azieltether.errors import AzielTetherError, ChainError, ItemError
 from azieltether.lattice import SURFACES, bind_surfaces, mint_tip
-from azieltether.protocol import LIMITATION, dual_chain_report, pulse, reconcile
+from azieltether.protocol import LIMITATION, dual_chain_report, pulse, reconcile, wires_report
 from azieltether.queues import harvest
 from azieltether.store import Store
 
@@ -101,6 +103,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
     p_har = sub.add_parser("harvest", help="Copy sibling tether queues (e.g. ~/.az-clce).")
     p_har.add_argument("--file", action="append", default=[], help="Extra JSONL queue path.")
+
+    sub.add_parser("wires", help="Print SPLIT THE WIRES + COLD-COPY SURVIVAL law.")
+    sub.add_parser("survival", help="Multiply local cold copies; print survival card.")
 
     p_imp = sub.add_parser("import", help="Import a JSON export.")
     p_imp.add_argument("file")
@@ -268,6 +273,25 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.cmd == "harvest":
             extra = [Path(p) for p in args.file]
             _print_json(harvest(st.chain(), extra=extra))
+            return 0
+
+        if args.cmd == "wires":
+            _print_json(wires_report())
+            return 0
+
+        if args.cmd == "survival":
+            from azieltether.survival import copy_manifest, law_card
+
+            copies = st.multiply_copies()
+            _print_json(
+                {
+                    "ok": True,
+                    "author": "Aziel Eliab",
+                    "survival": law_card(),
+                    "multiply": copies,
+                    "manifest": copy_manifest(st.copies_dir),
+                }
+            )
             return 0
 
         if args.cmd == "import":

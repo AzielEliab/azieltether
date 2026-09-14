@@ -21,3 +21,11 @@ class ChainError(AzielTetherError):
 
 class ProtocolError(AzielTetherError):
     """Raised when prefer-central / peer-sync / reconcile cannot proceed."""
+
+
+class WiresError(ProtocolError):
+    """SPLIT THE WIRES refused a tick, cite, socket, or apply."""
+
+
+class SurvivalError(ProtocolError):
+    """COLD-COPY SURVIVAL refused live sync, poison, or a free tip erase."""

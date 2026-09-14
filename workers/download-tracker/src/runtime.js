@@ -6,6 +6,17 @@
  * Author: Aziel Eliab.
  */
 import { meshOpenApiPaths, meshPointer } from "./mesh.js";
+import {
+  SURVIVAL_LAW,
+  SURVIVAL_SPEC,
+  WIRES_LAW,
+  WIRES_SPEC,
+  acceptPayload,
+  acceptTick,
+  refuseLiveBodySync,
+  refusePushFanout,
+  wiresCard,
+} from "./wires.js";
 
 const PRODUCT = "azieltether";
 const VERSION = "0.1.0";
@@ -21,7 +32,7 @@ const LIMITATION =
 
 const SKILL = `---
 name: AzielTether
-description: Use when preferring a central Worker, peer-syncing hash-chained work while it is down, reconciling on restore, or minting lattice tips across GodLock / Aziel Digital Library / product Workers. Dual surface: Worker /v1 + catalog MCP. This Worker /v1/mesh/* PROXY to aziel-runtime via AZIEL_RUNTIME. Suite mesh default OFF. QNM-BUILD-1.0 live|locked|isolated. QNS-CD-1.0 photon QNS1 packet transfer is a hub cite / Worker mesh cross-map only (local qnsd in qnm-node; no public qnsd proxy; not a Softwares-tab product). No Node Gate. No auto-heal. Not anonymity. Software tether, not a VPN. Author Aziel Eliab.
+description: Use when preferring a central Worker, peer-syncing hash-chained work while it is down, reconciling on restore, or minting lattice tips across GodLock / Aziel Digital Library / product Workers. Dual surface: Worker /v1 + catalog MCP. This Worker /v1/mesh/* PROXY to aziel-runtime via AZIEL_RUNTIME. Suite mesh default OFF. QNM-BUILD-1.0 live|locked|isolated. QNS-CD-1.0 photon QNS1 packet transfer is a hub cite / Worker mesh cross-map only (local qnsd in qnm-node; no public qnsd proxy; not a Softwares-tab product). SPLIT-THE-WIRES-1.0 (tick vs 777s gate). COLD-COPY-SURVIVAL-1.0 (multiply copies; no live body sync). No Node Gate. No auto-heal. Not anonymity. Software tether, not a VPN. Author Aziel Eliab.
 ---
 
 # AzielTether
@@ -54,7 +65,11 @@ Host: \`https://azieltether-download-tracker.vibelock.workers.dev\`
 | POST | \`/v1/dual-chain\` | Detect same-prev_hash forks. No winner. |
 | POST | \`/v1/tip\` | Mint or verify a lattice tip. |
 | POST | \`/v1/verify\` | Walk hashes and prev links (DAG). |
-| POST | \`/v1/peer-preview\` | Peer-sync handshake preview. Stateless. |
+| POST | \`/v1/peer-preview\` | SPLIT THE WIRES tick preview. Live body push refused. |
+| GET | \`/v1/wires\` | SPLIT THE WIRES + COLD-COPY SURVIVAL law card. |
+| POST | \`/v1/wires/tick\` | Tick plane: presence + tip hash only. No body. |
+| POST | \`/v1/wires/payload\` | Gate plane: receiver pull. Cite + lockset. |
+| GET | \`/v1/survival\` | COLD-COPY SURVIVAL law card. |
 
 OpenAPI: \`https://azieltether-download-tracker.vibelock.workers.dev/openapi.json\`
 
@@ -353,9 +368,39 @@ function openapiSpec(origin) {
       "/v1/peer-preview": {
         post: {
           operationId: "azieltether_peer-preview",
-          summary: "Peer-sync handshake preview. Stateless.",
+          summary: "SPLIT THE WIRES tick preview. Live body push refused.",
           requestBody: itemBody,
           responses: { "200": { description: "peer" } },
+        },
+      },
+      "/v1/wires": {
+        get: {
+          operationId: "azieltether_wires",
+          summary: "SPLIT THE WIRES + COLD-COPY SURVIVAL law card.",
+          responses: { "200": { description: "wires" } },
+        },
+      },
+      "/v1/wires/tick": {
+        post: {
+          operationId: "azieltether_wires_tick",
+          summary: "Tick plane: presence + tip hash only. Fixed-size. No body.",
+          requestBody: itemBody,
+          responses: { "200": { description: "tick" } },
+        },
+      },
+      "/v1/wires/payload": {
+        post: {
+          operationId: "azieltether_wires_payload",
+          summary: "Gate plane: receiver pull. Cite + lockset. No live body sync.",
+          requestBody: itemBody,
+          responses: { "200": { description: "payload" } },
+        },
+      },
+      "/v1/survival": {
+        get: {
+          operationId: "azieltether_survival",
+          summary: "COLD-COPY SURVIVAL law card.",
+          responses: { "200": { description: "survival" } },
         },
       },
     },
@@ -402,6 +447,7 @@ function mcpTools() {
     { name: "azieltether_dual-chain", description: "Detect same-prev_hash forks. No winner.", inputSchema: { type: "object", additionalProperties: true } },
     { name: "azieltether_tip", description: "Mint or verify a lattice tip.", inputSchema: { type: "object", additionalProperties: true } },
     { name: "azieltether_verify", description: "Walk hashes and prev links.", inputSchema: { type: "object", additionalProperties: true } },
+    { name: "azieltether_wires", description: "SPLIT THE WIRES + COLD-COPY SURVIVAL law card.", inputSchema: { type: "object" } },
   ];
 }
 
@@ -463,6 +509,8 @@ async function handleMcp(request) {
       payload = { ok: true, tip: args, note: "Lattice tip only. Boards stay mesh-free.", limitation: LIMITATION };
     } else if (name === "azieltether_verify") {
       payload = await verifyItems(asItems(args));
+    } else if (name === "azieltether_wires") {
+      payload = wiresCard();
     } else {
       payload = { error: "unknown tool", name };
     }
@@ -502,6 +550,8 @@ export async function handleRuntimeApi(request, url) {
       limitation: LIMITATION,
       catalog: CATALOG,
       mesh: meshPointer(),
+      wires_spec: WIRES_SPEC,
+      survival_spec: SURVIVAL_SPEC,
     });
   }
   if ((path === "/v1/example" || path === "/v1/example/") && request.method === "GET") {
@@ -618,26 +668,62 @@ export async function handleRuntimeApi(request, url) {
   }
   if (path === "/v1/peer-preview" && request.method === "POST") {
     const body = (await readBody()) || {};
-    const items = asItems(body);
-    const verified = await verifyItems(items);
+    const pushed = refusePushFanout(body);
+    const live = refuseLiveBodySync(body, body.plane || "tick", false);
+    if (!pushed.ok || !live.ok) {
+      return json({
+        ok: false,
+        product: PRODUCT,
+        author: AUTHOR,
+        code: live.code || pushed.code,
+        items: [],
+        push_fanout: false,
+        live_body_sync: false,
+        wires_spec: WIRES_SPEC,
+        survival_spec: SURVIVAL_SPEC,
+        stored: false,
+        kv_increment: false,
+        limitation: LIMITATION,
+      });
+    }
+    const tick = acceptTick(body, "tick");
     return json({
-      ok: true,
+      ok: tick.ok,
       product: PRODUCT,
       author: AUTHOR,
       mode: "peer-sync-when-down",
-      items,
-      tip_hashes: verified.tip_hashes,
-      dual_chain: verified.dual_chain,
+      ...tick,
+      items: [],
       stored: false,
       kv_increment: false,
+      wires_spec: WIRES_SPEC,
+      survival_spec: SURVIVAL_SPEC,
       limitation: LIMITATION,
     });
+  }
+  if ((path === "/v1/wires" || path === "/v1/survival") && request.method === "GET") {
+    const card = wiresCard();
+    return json({
+      ...card,
+      product: PRODUCT,
+      version: VERSION,
+      limitation: LIMITATION,
+      law: path === "/v1/survival" ? SURVIVAL_LAW : WIRES_LAW,
+    });
+  }
+  if (path === "/v1/wires/tick" && request.method === "POST") {
+    const body = (await readBody()) || {};
+    return json({ product: PRODUCT, version: VERSION, ...acceptTick(body, "tick"), limitation: LIMITATION, stored: false, kv_increment: false });
+  }
+  if (path === "/v1/wires/payload" && request.method === "POST") {
+    const body = (await readBody()) || {};
+    return json({ product: PRODUCT, version: VERSION, ...acceptPayload(body, "gate"), limitation: LIMITATION, stored: false, kv_increment: false });
   }
   if (path.startsWith("/v1/") || path === "/v1") {
     return json(
       {
         error: "not found",
-        hint: "GET /v1/health  GET /v1/skill  GET /v1/mesh  POST /v1/ingest  POST /v1/pulse  POST /v1/reconcile  POST /v1/dual-chain  POST /v1/tip  POST /v1/verify",
+        hint: "GET /v1/health  GET /v1/skill  GET /v1/mesh  GET /v1/wires  GET /v1/survival  POST /v1/wires/tick  POST /v1/wires/payload  POST /v1/ingest  POST /v1/pulse  POST /v1/reconcile  POST /v1/dual-chain  POST /v1/tip  POST /v1/verify",
         limitation: LIMITATION,
       },
       404,

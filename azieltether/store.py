@@ -7,6 +7,9 @@ Default: ``~/.azieltether`` (override ``AZIELTETHER_HOME``).
     tips.json     lattice tips per surface
     peers.json    peer URLs for sync-when-down
     state.json    last pulse / mode
+    copies/       multiplied cold copies (COLD-COPY SURVIVAL)
+    isolated.json peers ended by equivocation
+    lockset.json  sealed tip lockset
 
 Author: Aziel Eliab.
 """
@@ -22,6 +25,7 @@ from typing import Any
 from azieltether.canon import sha256_hex
 from azieltether.chain import Chain
 from azieltether.item import utc_now
+from azieltether.survival import MIN_COLD_COPIES, multiply_cold_copies
 
 HOME_ENV = "AZIELTETHER_HOME"
 DEFAULT_DIRNAME = ".azieltether"
@@ -58,6 +62,18 @@ class Store:
     @property
     def state_path(self) -> Path:
         return self.home / "state.json"
+
+    @property
+    def copies_dir(self) -> Path:
+        return self.home / "copies"
+
+    @property
+    def isolated_path(self) -> Path:
+        return self.home / "isolated.json"
+
+    @property
+    def lockset_path(self) -> Path:
+        return self.home / "lockset.json"
 
     def _read_json(self, path: Path, fallback: Any) -> Any:
         if not path.is_file():
@@ -133,3 +149,56 @@ class Store:
         state.setdefault("author", "Aziel Eliab")
         state["updated_at"] = utc_now()
         self._write_json(self.state_path, state)
+
+    def isolated_peers(self) -> list[str]:
+        rec = self._read_json(self.isolated_path, {"peers": []})
+        if isinstance(rec, dict):
+            peers = rec.get("peers") or []
+            return [str(p) for p in peers if str(p).strip()]
+        return []
+
+    def isolate_peer(self, node_id: str, *, reason: str = "WIRES-EQUIVOCATION") -> list[str]:
+        peers = self.isolated_peers()
+        if node_id and node_id not in peers:
+            peers.append(node_id)
+        self._write_json(
+            self.isolated_path,
+            {
+                "peers": peers,
+                "reason": reason,
+                "author": "Aziel Eliab",
+                "updated_at": utc_now(),
+            },
+        )
+        return peers
+
+    def is_isolated(self, node_id: str) -> bool:
+        return node_id in self.isolated_peers()
+
+    def lockset(self) -> dict[str, Any]:
+        rec = self._read_json(self.lockset_path, {})
+        return rec if isinstance(rec, dict) else {}
+
+    def write_lockset(self, lockset: dict[str, Any]) -> None:
+        rec = dict(lockset)
+        rec.setdefault("author", "Aziel Eliab")
+        rec.setdefault("sealed", True)
+        self._write_json(self.lockset_path, rec)
+
+    def seal_lockset(self) -> dict[str, Any]:
+        from azieltether.wires import mint_lockset
+
+        rec = mint_lockset(self.chain().tip_hashes(), node_id=self.node_id())
+        self.write_lockset(rec)
+        return rec
+
+    def multiply_copies(self, n: int = MIN_COLD_COPIES) -> dict[str, Any]:
+        """Seal every verified item into N local cold-copy slots."""
+        chain = self.chain()
+        result = chain.verify()
+        if not result.ok:
+            return {"ok": False, "code": "SURVIVAL-POISON-REFUSED", "copies": 0}
+        last: dict[str, Any] = {"ok": True, "copies": [], "count": 0}
+        for item in chain.items:
+            last = multiply_cold_copies(item, self.copies_dir, n=n)
+        return last

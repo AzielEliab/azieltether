@@ -20,7 +20,15 @@ from azieltether.chain import Chain
 from azieltether.errors import AzielTetherError
 from azieltether.jsonio import import_json
 from azieltether.lattice import bind_surfaces
-from azieltether.protocol import LIMITATION, accept_peer, dual_chain_report, pulse, reconcile
+from azieltether.protocol import (
+    LIMITATION,
+    accept_peer,
+    accept_tick_plane,
+    dual_chain_report,
+    serve_payload,
+    pulse,
+    reconcile,
+)
 from azieltether.store import Store
 
 DEFAULT_HOST = "127.0.0.1"
@@ -98,9 +106,11 @@ PAGE = r"""<!DOCTYPE html>
     <p class="lede">
       Central × decentral node-mesh software tether. Prefer the Worker when
       it is up. When it is down, nodes sync hash-chained work with each other,
-      then reconcile on restore. Dual-chain keeps both children of the same
-      prev_hash. Lattice tips survive across GodLock, Aziel Digital Library,
-      and product Workers. Public boards stay mesh-free. Bound to 127.0.0.1.
+      then reconcile on restore. SPLIT THE WIRES: tick is presence + tip
+      only; payload is a receiver pull on the 777s gate. COLD-COPY SURVIVAL:
+      multiply sealed copies; no live body sync. Dual-chain keeps both
+      children of the same prev_hash. Public boards stay mesh-free. Bound
+      to 127.0.0.1.
     </p>
   </header>
 
@@ -334,7 +344,18 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if path == "/api/peer":
                 body = self._read_json()
-                self._json(200, accept_peer(store, body))
+                rec = accept_peer(store, body)
+                self._json(200 if rec.get("ok") else 400, rec)
+                return
+            if path == "/api/tick":
+                body = self._read_json()
+                rec = accept_tick_plane(store, body)
+                self._json(200 if rec.get("ok") else 400, rec)
+                return
+            if path == "/api/payload":
+                body = self._read_json()
+                rec = serve_payload(store, body)
+                self._json(200 if rec.get("ok") else 400, rec)
                 return
             body = self._read_json() if path != "/api/verify" else {}
             if path == "/api/verify":

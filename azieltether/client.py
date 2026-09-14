@@ -38,11 +38,14 @@ def http_json(
     method: str = "GET",
     body: Any | None = None,
     timeout: float | None = None,
+    socket: str | None = None,
 ) -> dict[str, Any]:
     payload = None if body is None else json.dumps(body).encode("utf-8")
     headers = {"User-Agent": UA, "Accept": "application/json"}
     if payload is not None:
         headers["Content-Type"] = "application/json"
+    if socket:
+        headers["X-Aziel-Socket"] = socket
     req = Request(url, data=payload, headers=headers, method=method)
     try:
         with urlopen(req, timeout=timeout if timeout is not None else default_timeout()) as resp:
@@ -96,6 +99,60 @@ def post_tip(tip: dict[str, Any], *, host: str | None = None) -> dict[str, Any]:
     return http_json(base + "/v1/tip", method="POST", body=tip)
 
 
+def _peer_urls(peer: str, suffix: str) -> list[str]:
+    url = peer.rstrip("/")
+    if url.endswith(suffix):
+        return [url]
+    return [url + suffix]
+
+
+def peer_tick(
+    peer: str,
+    *,
+    node_id: str,
+    tip_hash: str,
+    socket: str = "tick",
+) -> dict[str, Any]:
+    """Tick plane: presence + tip hash only. Never a body."""
+    from azieltether.wires import TICK_SOCKET, assert_plane_socket, encode_tick
+
+    assert_plane_socket("tick", socket)
+    body = encode_tick(node_id=node_id, tip_hash=tip_hash)
+    last: dict[str, Any] = {"ok": False, "error": "no peer URL"}
+    for candidate in _peer_urls(peer, "/api/tick"):
+        last = http_json(candidate, method="POST", body=body, socket=TICK_SOCKET)
+        last["peer"] = peer
+        last["plane"] = "tick"
+        last["socket"] = TICK_SOCKET
+        if last.get("ok") or last.get("http_status") == 200:
+            return last
+    return last
+
+
+def peer_pull(
+    peer: str,
+    *,
+    cite: str,
+    lockset: str,
+    want: list[str] | None = None,
+    socket: str = "gate",
+) -> dict[str, Any]:
+    """Gate plane: receiver pulls. Never sender push fan-out."""
+    from azieltether.wires import GATE_SOCKET, assert_plane_socket, pull_request
+
+    assert_plane_socket("payload", socket)
+    body = pull_request(cite=cite, lockset=lockset, want=want)
+    last: dict[str, Any] = {"ok": False, "error": "no peer URL"}
+    for candidate in _peer_urls(peer, "/api/payload"):
+        last = http_json(candidate, method="POST", body=body, socket=GATE_SOCKET)
+        last["peer"] = peer
+        last["plane"] = "payload"
+        last["socket"] = GATE_SOCKET
+        if last.get("ok") or last.get("http_status") == 200:
+            return last
+    return last
+
+
 def peer_exchange(
     peer: str,
     *,
@@ -103,24 +160,19 @@ def peer_exchange(
     node_id: str,
     tip_hashes: list[str],
 ) -> dict[str, Any]:
-    url = peer.rstrip("/")
-    if not url.endswith("/api/peer") and "/v1/peer-preview" not in url:
-        # Prefer local UI peer API; fall back to Worker preview.
-        candidates = [url + "/api/peer", url + "/v1/peer-preview"]
-    else:
-        candidates = [url]
-    last: dict[str, Any] = {"ok": False, "error": "no peer URL"}
-    body = {
-        "node_id": node_id,
-        "tip_hashes": tip_hashes,
-        "items": items,
-        "author": "Aziel Eliab",
-        "product": "azieltether",
-    }
-    for candidate in candidates:
-        last = http_json(candidate, method="POST", body=body)
-        if last.get("ok") or last.get("http_status") == 200:
-            last["peer"] = peer
-            return last
-    last["peer"] = peer
-    return last
+    """SPLIT THE WIRES: tick only. Items are not pushed (no live body sync)."""
+    from azieltether.survival import refuse_live_body_sync
+    from azieltether.wires import refuse_push_fanout
+
+    _ = items  # law: ignored — receiver pulls; sender does not fan-out
+    refused = refuse_push_fanout({"items": items})
+    live = refuse_live_body_sync({"items": items}, plane="tick", verified=False)
+    tip = tip_hashes[0] if tip_hashes else "0" * 64
+    rec = peer_tick(peer, node_id=node_id, tip_hash=tip)
+    rec["push_fanout"] = False
+    rec["live_body_sync"] = False
+    rec["wires"] = refused
+    rec["survival"] = live
+    rec["tip_hashes"] = tip_hashes
+    rec["items"] = []
+    return rec

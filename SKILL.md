@@ -1,6 +1,6 @@
 ---
 name: AzielTether
-description: Use when preferring a central Worker, peer-syncing hash-chained work while it is down, reconciling on restore, or minting lattice tips across GodLock / Aziel Digital Library / product Workers. Dual surface: Worker /v1 + catalog MCP. This Worker /v1/mesh/* PROXY to aziel-runtime via AZIEL_RUNTIME. Suite mesh default OFF. QNM-BUILD-1.0 live|locked|isolated. QNS-CD-1.0 photon QNS1 packet transfer is a hub cite / Worker mesh cross-map only (local qnsd in qnm-node; no public qnsd proxy; not a Softwares-tab product). No Node Gate. No auto-heal. Not anonymity. Software tether, not a VPN. Author Aziel Eliab.
+description: Use when preferring a central Worker, peer-syncing hash-chained work while it is down, reconciling on restore, or minting lattice tips across GodLock / Aziel Digital Library / product Workers. Dual surface: Worker /v1 + catalog MCP. This Worker /v1/mesh/* PROXY to aziel-runtime via AZIEL_RUNTIME. Suite mesh default OFF. QNM-BUILD-1.0 live|locked|isolated. QNS-CD-1.0 photon QNS1 packet transfer is a hub cite / Worker mesh cross-map only (local qnsd in qnm-node; no public qnsd proxy; not a Softwares-tab product). SPLIT-THE-WIRES-1.0 (tick vs 777s gate). COLD-COPY-SURVIVAL-1.0 (multiply copies; no live body sync). No Node Gate. No auto-heal. Not anonymity. Software tether, not a VPN. Author Aziel Eliab.
 ---
 
 # AzielTether
@@ -33,7 +33,11 @@ Host: `https://azieltether-download-tracker.vibelock.workers.dev`
 | POST | `/v1/dual-chain` | Detect same-prev_hash forks. No winner. |
 | POST | `/v1/tip` | Mint or verify a lattice tip. |
 | POST | `/v1/verify` | Walk hashes and prev links (DAG). |
-| POST | `/v1/peer-preview` | Peer-sync handshake preview. Stateless. |
+| POST | `/v1/peer-preview` | SPLIT THE WIRES tick preview. Live body push refused. |
+| GET | `/v1/wires` | SPLIT THE WIRES + COLD-COPY SURVIVAL law card. |
+| POST | `/v1/wires/tick` | Tick plane: presence + tip hash only. No body. |
+| POST | `/v1/wires/payload` | Gate plane: receiver pull. Cite + lockset. |
+| GET | `/v1/survival` | COLD-COPY SURVIVAL law card. |
 
 OpenAPI: `https://azieltether-download-tracker.vibelock.workers.dev/openapi.json`
 

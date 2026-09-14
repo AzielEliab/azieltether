@@ -16,6 +16,15 @@ from azieltether.chain import Chain, detect_dual_chain
 from azieltether.item import Item
 from azieltether.lattice import mint_tip
 from azieltether.store import Store
+from azieltether.survival import MIN_COLD_COPIES, multiply_cold_copies, poison_refused, single_server_pull
+from azieltether.wires import (
+    GATE_SOCKET,
+    TICK_FRAME_BYTES,
+    TICK_SOCKET,
+    assert_distinct_sockets,
+    encode_tick,
+    hash_holds,
+)
 
 AUTHOR = "Aziel Eliab"
 Check = tuple[str, bool, str]
@@ -117,6 +126,34 @@ def _check_tip() -> Check:
     return _ok("lattice tip", tip.surface)
 
 
+def _check_wires() -> Check:
+    try:
+        assert_distinct_sockets(TICK_SOCKET, GATE_SOCKET)
+        frame = encode_tick(node_id="a" * 64, tip_hash="b" * 64)
+        if len(bytes.fromhex(frame["frame"])) != TICK_FRAME_BYTES:
+            return _fail("split-wires", "tick frame size")
+        if hash_holds(digest_ok=False, votes_for=777):
+            return _fail("split-wires", "quorum outvoted hash")
+    except Exception as exc:  # noqa: BLE001
+        return _fail("split-wires", str(exc))
+    return _ok("split-wires", "tick/gate sockets distinct")
+
+
+def _check_survival() -> Check:
+    with tempfile.TemporaryDirectory() as tmp:
+        node = "e" * 64
+        chain = Chain.genesis(Path(tmp) / "q.jsonl", payload="cold", node_id=node, created_at="2026-09-04T00:00:00Z")
+        rec = multiply_cold_copies(chain[0], Path(tmp) / "copies")
+        if rec.get("count", 0) < MIN_COLD_COPIES:
+            return _fail("cold-copy", "not enough copies")
+        pull = single_server_pull([chain[0].hash], [])
+        if pull.get("dropped"):
+            return _fail("cold-copy", "single-server pull killed local")
+        if poison_refused(digest_ok=False, votes_for=99).get("ok"):
+            return _fail("cold-copy", "poison accepted")
+    return _ok("cold-copy survival", f"{MIN_COLD_COPIES} copies")
+
+
 CHECKS: tuple[Callable[[], Check], ...] = (
     _check_version,
     _check_identity,
@@ -124,6 +161,8 @@ CHECKS: tuple[Callable[[], Check], ...] = (
     _check_dual_chain,
     _check_json_roundtrip,
     _check_tip,
+    _check_wires,
+    _check_survival,
 )
 
 

@@ -51,3 +51,16 @@ def test_cli_status_and_node_id(tmp_path: Path, capsys) -> None:
     assert main(["--home", str(home), "node-id"]) == 0
     node = capsys.readouterr().out.strip()
     assert len(node) == 64
+
+
+def test_cli_wires_and_survival(tmp_path: Path, capsys) -> None:
+    home = tmp_path / "home"
+    assert main(["--home", str(home), "genesis", "--payload", "cold"]) == 0
+    capsys.readouterr()
+    assert main(["--home", str(home), "wires"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["wires"]["spec"] == "SPLIT-THE-WIRES-1.0"
+    assert payload["survival"]["spec"] == "COLD-COPY-SURVIVAL-1.0"
+    assert main(["--home", str(home), "survival"]) == 0
+    surv = json.loads(capsys.readouterr().out)
+    assert surv["multiply"]["count"] >= 3

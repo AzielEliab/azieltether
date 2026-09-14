@@ -17,6 +17,7 @@ from typing import Any, Iterable, Iterator, Mapping, Sequence
 from azieltether.canon import GENESIS_PREV_HASH, canonical_json, digest_mapping, require_hex64
 from azieltether.errors import AppendOnlyError, ChainError, ItemError
 from azieltether.item import Item
+from azieltether.wires import hash_holds
 
 GENESIS_PREV_HASH = GENESIS_PREV_HASH
 
@@ -63,8 +64,15 @@ def _as_dict(item: Mapping[str, Any] | Item) -> dict[str, Any]:
     return item.as_dict() if isinstance(item, Item) else dict(item)
 
 
-def verify_items(items: Sequence[Mapping[str, Any] | Item]) -> VerifyResult:
-    """Verify hashes and prev links as a DAG. Forks are allowed."""
+def verify_items(
+    items: Sequence[Mapping[str, Any] | Item],
+    *,
+    votes_for: int = 0,
+) -> VerifyResult:
+    """Verify hashes and prev links as a DAG. Forks are allowed.
+
+    Hash is absolute: ``votes_for`` cannot flip a broken digest to ok.
+    """
     errors: list[str] = []
     known: dict[str, dict[str, Any]] = {}
     order: list[str] = []
@@ -79,7 +87,8 @@ def verify_items(items: Sequence[Mapping[str, Any] | Item]) -> VerifyResult:
         except ValueError as exc:
             errors.append(f"item {idx}: {exc}")
             continue
-        if digest_mapping(data) != digest:
+        digest_ok = digest_mapping(data) == digest
+        if not hash_holds(digest_ok=digest_ok, votes_for=votes_for):
             errors.append(f"item {idx}: hash mismatch")
         prev = str(data.get("prev_hash") or "")
         if prev != GENESIS_PREV_HASH and prev not in known:
@@ -175,10 +184,27 @@ class Chain:
         )
         return self.append_item(item)
 
-    def merge(self, incoming: Iterable[Mapping[str, Any] | Item]) -> dict[str, Any]:
-        """Union by hash. Dual-chain on same-prev conflict. Never rewrite."""
+    def children_of(self, prev_hash: str) -> list[str]:
+        return [item.hash for item in self._items if item.prev_hash == prev_hash]
+
+    def merge(
+        self,
+        incoming: Iterable[Mapping[str, Any] | Item],
+        *,
+        operator: bool = True,
+        cite: str | None = None,
+        lockset: str | None = None,
+    ) -> dict[str, Any]:
+        """Union by hash. Dual-chain on same-prev conflict. Never rewrite.
+
+        Operator / reconcile may introduce a fork. A peer merge without
+        cite+lockset refuses auto-splice (SPLIT THE WIRES partition law).
+        """
+        from azieltether.wires import cite_ok, partition_rejoin
+
         added = 0
         skipped = 0
+        isolated = False
         for raw in incoming:
             try:
                 item = raw if isinstance(raw, Item) else Item.from_mapping(raw)
@@ -188,6 +214,13 @@ class Chain:
             if item.hash in self.hashes():
                 skipped += 1
                 continue
+            would_fork = bool(self.children_of(item.prev_hash))
+            if would_fork and not operator:
+                splice = partition_rejoin(cite=cite, lockset=lockset, operator=False)
+                if not splice.get("ok") or not cite_ok(cite, lockset):
+                    isolated = True
+                    skipped += 1
+                    continue
             self.append_item(item)
             added += 1
         result = self.verify()
@@ -195,13 +228,18 @@ class Chain:
             "added": added,
             "skipped": skipped,
             "items": result.items,
-            "ok": result.ok,
+            "ok": result.ok and not isolated,
+            "isolate": isolated,
+            "code": "WIRES-NO-AUTO-SPLICE" if isolated else "CHAIN-MERGE",
             "dual_chain": [
                 {"prev_hash": f.prev_hash, "child_hashes": list(f.child_hashes)}
                 for f in result.dual_chain
             ],
             "tip_hashes": list(result.tip_hashes),
         }
+
+    def refuse_erase(self) -> None:
+        raise AppendOnlyError("tip expensive to erase; cold copies stay")
 
     def verify(self) -> VerifyResult:
         return verify_items(self._items)
