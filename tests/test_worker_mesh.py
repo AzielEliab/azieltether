@@ -10,6 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MESH = (ROOT / "workers/download-tracker/src/mesh.js").read_text(encoding="utf-8")
+WIRES = (ROOT / "workers/download-tracker/src/wires.js").read_text(encoding="utf-8")
 RUNTIME = (ROOT / "workers/download-tracker/src/runtime.js").read_text(encoding="utf-8")
 INDEX = (ROOT / "workers/download-tracker/src/index.js").read_text(encoding="utf-8")
 WRANGLER = (ROOT / "workers/download-tracker/wrangler.toml").read_text(encoding="utf-8")
@@ -48,6 +49,57 @@ def test_mesh_contract_default_off_qnm_law() -> None:
     assert "qns_cd: QNS_CD" in MESH
     assert "MESH_NOTE" in MESH
     assert "QNS-CD-1.0" in MESH[MESH.index("export const MESH_NOTE") : MESH.index("export const MESH_NOTE") + 400]
+
+
+def test_split_wires_and_cold_copy_survival_on_worker() -> None:
+    assert 'WIRES_SPEC = "SPLIT-THE-WIRES-1.0"' in WIRES
+    assert 'SURVIVAL_SPEC = "COLD-COPY-SURVIVAL-1.0"' in WIRES
+    assert "TICK_MIN_MS = 500" in WIRES
+    assert "TICK_MAX_MS = 1000" in WIRES
+    assert "GATE_DWELL_S = 777" in WIRES
+    assert 'TICK_SOCKET = "tick"' in WIRES
+    assert 'GATE_SOCKET = "gate"' in WIRES
+    assert "LIVE_BODY_SYNC = false" in WIRES
+    assert "PUSH_FANOUT = false" in WIRES
+    assert "MIN_COLD_COPIES = 3" in WIRES
+    assert "HASH_ABSOLUTE = true" in WIRES
+    assert "OUTLIVES_CREATORS = true" in WIRES
+    assert "SINGLE_SERVER_CAN_KILL = false" in WIRES
+    assert "export function acceptTick" in WIRES
+    assert "export function acceptPayload" in WIRES
+    assert "SPLIT-THE-WIRES-1.0" in MESH
+    assert "COLD-COPY-SURVIVAL-1.0" in MESH
+    assert "MESH_GATE_DWELL_S = 777" in MESH
+    assert "shared: false" in MESH
+    assert "live_body_sync" in MESH
+    assert 'from "./wires.js"' in MESH
+    assert 'from "./wires.js"' in RUNTIME
+    assert "/v1/wires" in RUNTIME
+    assert "/v1/wires/tick" in RUNTIME
+    assert "/v1/wires/payload" in RUNTIME
+    assert "/v1/survival" in RUNTIME
+    assert "SPLIT-THE-WIRES-1.0" in INDEX
+    assert "COLD-COPY-SURVIVAL-1.0" in INDEX
+    assert "SPLIT-THE-WIRES-1.0" in README
+    assert "COLD-COPY-SURVIVAL-1.0" in SKILL
+    assert "SPLIT THE WIRES" in (ROOT / "docs/SPLIT-THE-WIRES.md").read_text(encoding="utf-8")
+    assert "COLD-COPY SURVIVAL" in (ROOT / "docs/COLD-COPY-SURVIVAL.md").read_text(encoding="utf-8")
+    assert "SPLIT THE WIRES" in WORKER_README
+    assert "COLD-COPY-SURVIVAL-1.0" in WORKER_README
+    assert 'REHEAL_SPEC = "REHEAL-1.0"' in WIRES
+    assert "PHOENIX_WAIT = \"phoenix-WAIT\"" in WIRES
+    assert "NEIGHBOR_VOTE_TO_FIX = false" in WIRES
+    assert "export function decideReheal" in WIRES
+    assert "export function refuseVoteToFix" in WIRES
+    assert "REHEAL-1.0" in MESH
+    assert "MESH_PHOENIX_WAIT" in MESH
+    assert "allowed_chatter" in MESH
+    assert "/v1/reheal" in RUNTIME
+    assert "REHEAL-1.0" in INDEX
+    assert "REHEAL-1.0" in README
+    assert "REHEAL-1.0" in SKILL
+    assert "phoenix-WAIT" in (ROOT / "docs/REHEAL.md").read_text(encoding="utf-8")
+    assert "REHEAL-1.0" in WORKER_README
 
 
 def test_mesh_pointer_and_openapi_helpers() -> None:

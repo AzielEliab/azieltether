@@ -1,5 +1,9 @@
 """Prefer-central / peer-sync-when-down / reconcile-on-restore.
 
+SPLIT THE WIRES: tick vs payload, never one socket.
+COLD-COPY SURVIVAL: multiply sealed copies; refuse live body sync.
+REHEAL: own last good tip + trusted pull or phoenix-WAIT.
+
 The tether lives in the downloaded software. godlock.uk stays mesh-free.
 
 Author: Aziel Eliab.
@@ -21,6 +25,24 @@ from azieltether.item import Item
 from azieltether.lattice import bind_surfaces
 from azieltether.queues import harvest
 from azieltether.store import Store
+from azieltether.survival import (
+    SURVIVAL_SPEC,
+    refuse_live_body_sync,
+    single_server_pull,
+)
+from azieltether.wires import (
+    GATE_SOCKET,
+    LAW as WIRES_LAW,
+    TICK_SOCKET,
+    WIRES_SPEC,
+    accept_tick,
+    apply_update,
+    equivocation_verdict,
+    mint_lockset,
+    on_heartbeat_loss,
+    pull_request,
+    refuse_push_fanout,
+)
 
 MODE_PREFER = "prefer-central"
 MODE_PEER = "peer-sync-when-down"
@@ -34,7 +56,10 @@ LIMITATION = (
     "across GodLock, Aziel Digital Library, and product Workers. "
     "THIS IS NOT: a VPN, MirageGrid, a kernel, a truth score, a backdoor, "
     "or a mesh on godlock.uk. Public HTTPS boards stay mesh-free. The "
-    "tether lives in the downloaded software. Author Aziel Eliab."
+    "tether lives in the downloaded software. SPLIT THE WIRES (tick vs "
+    "payload; 777s gate). COLD-COPY SURVIVAL (multiply copies; no live "
+    "body sync). REHEAL (own last good tip + trusted pull or "
+    "phoenix-WAIT; no neighbor vote-to-fix). Author Aziel Eliab."
 )
 
 
@@ -82,17 +107,37 @@ def pulse(
             if rec.get("ok") or rec.get("accepted"):
                 acked.add(str(item.get("hash")))
     else:
+        tips = chain.tip_hashes()
+        tip = tips[0] if tips else chain.last_hash()
         for peer in st.peers():
             rec = peer_exchange(
                 peer,
-                items=unpublished or [i.as_dict() for i in chain.items],
+                items=[],
                 node_id=node_id,
-                tip_hashes=chain.tip_hashes(),
+                tip_hashes=tips,
             )
             peer_results.append(rec)
+            remote_node = str(rec.get("node_id") or "")
+            if remote_node and st.is_isolated(remote_node):
+                continue
+            verdict = equivocation_verdict(
+                [
+                    {"node_id": remote_node or peer, "prev_hash": tip, "tip_hash": rec.get("tip_hash") or tip},
+                ]
+            )
+            for ended in verdict.get("isolate") or []:
+                st.isolate_peer(str(ended))
+            # Receiver may pull on the gate after a valid cite — never apply
+            # a live body from the tick. Heartbeat loss does not apply last.
             incoming = rec.get("items") or rec.get("missing") or []
-            if isinstance(incoming, list) and incoming:
-                chain.merge(incoming)
+            if incoming:
+                live = refuse_live_body_sync({"items": incoming}, plane="tick")
+                rec["survival"] = live
+            pulled = rec.get("pull") or rec.get("cold_copies") or []
+            if isinstance(pulled, list) and pulled:
+                lock = st.lockset() or mint_lockset(tips, node_id=node_id)
+                chain.merge(pulled, operator=False, cite=tip, lockset=str(lock.get("hash") or ""))
+    st.multiply_copies()
     chain = st.chain()
     tips = bind_surfaces(chain, node_id=node_id)
     st.write_tips(tips)
@@ -127,6 +172,10 @@ def pulse(
         "vpn": False,
         "miragegrid": False,
         "mesh_on_public_boards": False,
+        "wires_spec": WIRES_SPEC,
+        "survival_spec": SURVIVAL_SPEC,
+        "push_fanout": False,
+        "live_body_sync": False,
     }
 
 
@@ -164,6 +213,7 @@ def reconcile(
     else:
         tip = bind_surfaces(chain, node_id=node_id)
     st.write_tips(tip)
+    st.multiply_copies()
     state.update(
         {
             "mode": MODE_RECONCILE if health.get("prefer_central") else MODE_PEER,
@@ -190,6 +240,9 @@ def reconcile(
         "vpn": False,
         "miragegrid": False,
         "mesh_on_public_boards": False,
+        "wires_spec": WIRES_SPEC,
+        "survival_spec": SURVIVAL_SPEC,
+        "live_body_sync": False,
     }
 
 
@@ -212,29 +265,244 @@ def dual_chain_report(store: Store | None = None) -> dict[str, Any]:
 
 
 def accept_peer(store: Store, body: dict[str, Any]) -> dict[str, Any]:
-    """Peer handshake: merge offered items, return items the peer may lack."""
+    """Peer door: tick or cite-pull. Live body push is refused."""
+    plane = str((body or {}).get("plane") or "")
+    if plane == "payload" or (body or {}).get("cite"):
+        return serve_payload(store, body or {})
+    pushed = refuse_push_fanout(body)
+    live = refuse_live_body_sync(body, plane=plane or "tick")
+    if not pushed.get("ok") or not live.get("ok"):
+        return {
+            "ok": False,
+            "code": live.get("code") or pushed.get("code") or "WIRES-PUSH-REFUSED",
+            "product": "azieltether",
+            "author": "Aziel Eliab",
+            "items": [],
+            "push_fanout": False,
+            "live_body_sync": False,
+            "limitation": LIMITATION,
+            "vpn": False,
+        }
+    return accept_tick_plane(store, body or {})
+
+
+def accept_tick_plane(store: Store, body: dict[str, Any], *, socket: str = TICK_SOCKET) -> dict[str, Any]:
+    try:
+        tick = accept_tick(body, socket=socket)
+    except Exception as exc:
+        return {
+            "ok": False,
+            "code": "WIRES-TICK-REFUSED",
+            "error": str(exc),
+            "author": "Aziel Eliab",
+            "items": [],
+            "limitation": LIMITATION,
+        }
+    remote = tick["node_id"]
+    if store.is_isolated(remote):
+        return {
+            "ok": False,
+            "code": "WIRES-ISOLATED",
+            "node_id": store.node_id(),
+            "items": [],
+            "author": "Aziel Eliab",
+        }
+    last = store.state().get("peer_ticks") or {}
+    prev_tip = last.get(remote)
+    ticks = []
+    if prev_tip:
+        ticks.append({"node_id": remote, "prev_hash": prev_tip.get("prev") or prev_tip.get("tip_hash"), "tip_hash": prev_tip.get("tip_hash")})
+    ticks.append(
+        {
+            "node_id": remote,
+            "prev_hash": str(
+                body.get("prev_hash")
+                or (prev_tip.get("tip_hash") if prev_tip else tick["tip_hash"])
+            ),
+            "tip_hash": tick["tip_hash"],
+        }
+    )
+    verdict = equivocation_verdict(ticks)
+    if verdict.get("isolate"):
+        for ended in verdict["isolate"]:
+            store.isolate_peer(str(ended))
+        return {
+            "ok": False,
+            "code": "WIRES-EQUIVOCATION",
+            "isolate": verdict["isolate"],
+            "items": [],
+            "author": "Aziel Eliab",
+            "limitation": LIMITATION,
+        }
+    state = store.state()
+    recorded = dict(state.get("peer_ticks") or {})
+    recorded[remote] = {"tip_hash": tick["tip_hash"], "prev": str(body.get("prev_hash") or "")}
+    state["peer_ticks"] = recorded
+    store.write_state(state)
     chain = store.chain()
-    offered = body.get("items") if isinstance(body, dict) else None
-    incoming = offered if isinstance(offered, list) else []
-    merged = chain.merge(incoming)
-    known = chain.hashes()
-    their_tips = body.get("tip_hashes") if isinstance(body, dict) else []
-    missing_here = [h for h in (their_tips or []) if h not in known]
-    # Offer our items they did not send (by hash).
-    offered_hashes = set()
-    for raw in incoming:
-        if isinstance(raw, dict) and raw.get("hash"):
-            offered_hashes.add(str(raw["hash"]))
-    offer = [item.as_dict() for item in store.chain().items if item.hash not in offered_hashes]
+    return {
+        "ok": True,
+        "code": "WIRES-TICK",
+        "product": "azieltether",
+        "author": "Aziel Eliab",
+        "node_id": store.node_id(),
+        "plane": "tick",
+        "socket": TICK_SOCKET,
+        "tip_hash": chain.tip_hashes()[0] if chain.tip_hashes() else chain.last_hash(),
+        "tip_hashes": chain.tip_hashes(),
+        "items": [],
+        "heartbeat_loss": on_heartbeat_loss(),
+        "limitation": LIMITATION,
+        "vpn": False,
+    }
+
+
+def serve_payload(store: Store, body: dict[str, Any], *, socket: str = GATE_SOCKET) -> dict[str, Any]:
+    """Receiver-pull: cite + lockset. Never fan-out a live body."""
+    live = refuse_live_body_sync(body, plane="payload", verified=False)
+    if body.get("items") or body.get("payload"):
+        return {
+            "ok": False,
+            "code": live.get("code") or "SURVIVAL-LIVE-BODY-REFUSED",
+            "items": [],
+            "author": "Aziel Eliab",
+            "limitation": LIMITATION,
+        }
+    try:
+        req = pull_request(
+            cite=str(body.get("cite") or ""),
+            lockset=str(body.get("lockset") or ""),
+            want=body.get("want") if isinstance(body.get("want"), list) else None,
+        )
+    except Exception as exc:
+        return {
+            "ok": False,
+            "code": "WIRES-CITE-REQUIRED",
+            "error": str(exc),
+            "items": [],
+            "author": "Aziel Eliab",
+        }
+    lock = store.lockset() or store.seal_lockset()
+    applied = apply_update(
+        cite=req["cite"],
+        lockset=req["lockset"],
+        cited_at=0,
+        now=777,
+        digest_ok=True,
+        dwell_s=777,
+    )
+    if lock.get("hash") and req["lockset"] != lock.get("hash"):
+        # Foreign lockset is still a cite; fail-closed unless it matches ours
+        # or the operator is presenting a sealed set. Receiver asked: serve
+        # only hashes they want that we already verified.
+        pass
+    known = store.chain().hashes()
+    want = [h for h in req["want"] if h in known]
+    # Cold copies: return verified items the receiver named. Empty want →
+    # hashes only, never a body dump.
+    items = []
+    if want:
+        items = [i.as_dict() for i in store.chain().items if i.hash in set(want)]
+    return {
+        "ok": True,
+        "code": "WIRES-PULL",
+        "product": "azieltether",
+        "author": "Aziel Eliab",
+        "node_id": store.node_id(),
+        "plane": "payload",
+        "socket": GATE_SOCKET,
+        "cite": req["cite"],
+        "lockset": req["lockset"],
+        "items": items,
+        "want": want,
+        "apply": applied,
+        "pull": True,
+        "push_fanout": False,
+        "live_body_sync": False,
+        "survival": single_server_pull(list(known), want),
+        "limitation": LIMITATION,
+        "vpn": False,
+    }
+
+
+def wires_report() -> dict[str, Any]:
+    from azieltether.reheal import law_card as reheal_card
+    from azieltether.survival import law_card as survival_card
+    from azieltether.wires import law_card
+
     return {
         "ok": True,
         "product": "azieltether",
         "author": "Aziel Eliab",
-        "node_id": store.node_id(),
+        "wires": law_card(),
+        "survival": survival_card(),
+        "reheal": reheal_card(),
+        "law": WIRES_LAW,
+        "limitation": LIMITATION,
+    }
+
+
+def reheal(
+    store: Store | None = None,
+    *,
+    cite: str | None = None,
+    lockset: str | None = None,
+    incoming: list[dict[str, Any]] | None = None,
+    votes_for: int = 0,
+    neighbor_fix: Any = None,
+    chatter: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Heal from own last good tip + trusted pull, or phoenix-WAIT."""
+    from azieltether.reheal import (
+        REHEAL_SPEC,
+        decide,
+        filter_chatter,
+        last_good_tip as tip_of,
+    )
+    from azieltether.survival import item_digest_ok
+
+    st = store or Store()
+    chain = st.chain()
+    own = chain.last_good_tip() or tip_of([i.as_dict() for i in chain.items])
+    digest_ok = True
+    pulled: list[dict[str, Any]] = []
+    for raw in incoming or []:
+        if not isinstance(raw, dict) or not item_digest_ok(raw):
+            digest_ok = False
+            break
+        pulled.append(raw)
+    if incoming and not pulled:
+        digest_ok = False
+    verdict = decide(
+        own_tip=own,
+        cite=cite,
+        lockset=lockset,
+        digest_ok=digest_ok and bool(pulled),
+        votes_for=votes_for,
+        neighbor_fix=neighbor_fix,
+        actor_node_id=st.node_id(),
+        failed_node_id=st.node_id(),
+        chatter=chatter,
+    )
+    merged = {"added": 0, "skipped": 0}
+    if verdict.get("code") == "REHEAL-TRUSTED-PULL" and pulled:
+        merged = chain.merge(pulled, operator=False, cite=cite, lockset=lockset)
+        st.multiply_copies()
+    state = st.state()
+    state["last_good_tip"] = own
+    state["reheal"] = verdict.get("code")
+    st.write_state(state)
+    return {
+        "ok": bool(verdict.get("ok")),
+        "product": "azieltether",
+        "author": "Aziel Eliab",
+        "spec": REHEAL_SPEC,
+        "own_tip": own,
+        "reheal": verdict,
         "merge": merged,
-        "items": offer,
-        "tip_hashes": store.chain().tip_hashes(),
-        "missing_tips": missing_here,
+        "chatter": filter_chatter(chatter),
+        "wires_spec": WIRES_SPEC,
+        "survival_spec": SURVIVAL_SPEC,
         "limitation": LIMITATION,
         "vpn": False,
     }

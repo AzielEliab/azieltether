@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import threading
+import urllib.error
 import urllib.request
 
 import pytest
@@ -38,6 +39,10 @@ def test_ui_get_root_and_genesis(tmp_path) -> None:
         assert b"AzielTether" in html
         assert b"127.0.0.1" in html
         assert b"Prefer central" in html
+        assert b"SPLIT THE WIRES" in html
+        assert b"COLD-COPY SURVIVAL" in html
+        assert b"REHEAL" in html
+        assert b"phoenix-WAIT" in html
         with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=5) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
         assert payload["ok"] is True
@@ -62,6 +67,49 @@ def test_ui_get_root_and_genesis(tmp_path) -> None:
         with urllib.request.urlopen(req, timeout=5) as resp:
             verified = json.loads(resp.read().decode("utf-8"))
         assert verified["verify"]["ok"] is True
+        tip = minted["items"][0]["hash"]
+        node = minted["items"][0]["node_id"]
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{port}/api/tick",
+            data=json.dumps({"node_id": node, "tip_hash": tip, "plane": "tick"}).encode(),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            tick = json.loads(resp.read().decode("utf-8"))
+        assert tick["ok"] is True
+        assert tick["items"] == []
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{port}/api/peer",
+            data=json.dumps({"items": [{"payload": "live"}]}).encode(),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            urllib.request.urlopen(req, timeout=5)
+            raise AssertionError("live body push should refuse")
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 400
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{port}/api/reheal",
+            data=json.dumps({}).encode(),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            healed = json.loads(resp.read().decode("utf-8"))
+        assert healed["reheal"]["wait"] == "phoenix-WAIT"
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{port}/api/reheal",
+            data=json.dumps({"votes_for": 9, "neighbor_fix": "no"}).encode(),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            urllib.request.urlopen(req, timeout=5)
+            raise AssertionError("vote-to-fix should refuse")
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 400
     finally:
         httpd.shutdown()
         httpd.server_close()

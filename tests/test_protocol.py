@@ -20,6 +20,21 @@ def test_pulse_offline_is_peer_mode(tmp_path: Path, monkeypatch) -> None:
     assert rec["vpn"] is False
     assert rec["mesh_on_public_boards"] is False
     assert rec["author"] == "Aziel Eliab"
+    assert rec["wires_spec"] == "SPLIT-THE-WIRES-1.0"
+    assert rec["survival_spec"] == "COLD-COPY-SURVIVAL-1.0"
+    assert rec["push_fanout"] is False
+    assert rec["live_body_sync"] is False
+
+
+def test_reheal_phoenix_wait_without_pull(tmp_path: Path) -> None:
+    from azieltether.protocol import reheal
+
+    st = Store(tmp_path / "home")
+    item = st.chain().append("stay", node_id=st.node_id())
+    rec = reheal(st)
+    assert rec["own_tip"] == item.hash
+    assert rec["reheal"]["wait"] == "phoenix-WAIT"
+    assert rec["reheal"]["applied"] is False
 
 
 def test_reconcile_merges_dual_chain(tmp_path: Path) -> None:

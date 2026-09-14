@@ -293,6 +293,8 @@ Skill: ${HOST}/v1/skill
 
 Indexing, metadata scrape, and AI grounding of public pages are allowed.
 Suite mesh: ${HOST}/v1/mesh (PROXY to aziel-runtime; default OFF; QNM-BUILD-1.0; QNS-CD-1.0 hub cite, no public qnsd proxy).
+SPLIT THE WIRES + COLD-COPY SURVIVAL: ${HOST}/v1/wires
+REHEAL: ${HOST}/v1/reheal
 Not a VPN. Not MirageGrid. Public HTTPS boards stay mesh-free.
 `;
 }
@@ -414,7 +416,7 @@ async function indexHtml(env) {
       <button id="meshJoin" type="button" title="Join as azieltether. Refused while mesh is OFF. No auto-join.">Join</button>
       <button id="meshLeave" type="button" title="Leave this node. No auto-heal.">Leave</button>
     </div>
-    <p id="meshProducts">Catalog MCP mesh_* · FragGate slug=mesh · /v1/mesh/* PROXY · QNS-CD-1.0 cross-map · not AnonBroadcast · not AZMail ring · not a Node Gate · no public qnsd proxy</p>
+    <p id="meshProducts">Catalog MCP mesh_* · FragGate slug=mesh · /v1/mesh/* PROXY · QNS-CD-1.0 cross-map · SPLIT-THE-WIRES-1.0 · COLD-COPY-SURVIVAL-1.0 · REHEAL-1.0 · not AnonBroadcast · not AZMail ring · not a Node Gate · no public qnsd proxy</p>
   </div>
   <div class="card">
     <div class="nums">
@@ -494,7 +496,7 @@ async function indexHtml(env) {
           var names = Array.isArray(products) ? products.map(function (p) { return typeof p === "string" ? p : (p && (p.product || p.slug)) || ""; }).filter(Boolean) : [];
           var nodes = Array.isArray(j.nodes) ? j.nodes : [];
           var extra = names.length ? " · products " + names.join(", ") : (nodes.length ? " · " + nodes.length + " node labels" : "");
-          $("meshProducts").textContent = "Catalog MCP mesh_* · FragGate slug=mesh · /v1/mesh/* PROXY · QNS-CD-1.0 cross-map · not AnonBroadcast · not AZMail ring · not a Node Gate · no public qnsd proxy" + extra;
+          $("meshProducts").textContent = "Catalog MCP mesh_* · FragGate slug=mesh · /v1/mesh/* PROXY · QNS-CD-1.0 cross-map · SPLIT-THE-WIRES-1.0 · COLD-COPY-SURVIVAL-1.0 · REHEAL-1.0 · not AnonBroadcast · not AZMail ring · not a Node Gate · no public qnsd proxy" + extra;
         }
         async function meshGet(path) {
           var r = await fetch(path, { headers: { "user-agent": "Mozilla/5.0", accept: "application/json" } });

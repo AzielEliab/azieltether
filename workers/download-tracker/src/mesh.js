@@ -1,6 +1,7 @@
 /**
  * Suite node mesh — QNM-BUILD-1.0 Live Nodes contract.
  * QNS-CD-1.0 cross-map (photon QNS1 packet transfer): hub cite only.
+ * SPLIT THE WIRES + COLD-COPY SURVIVAL: tick vs payload; no live body sync.
  * Local qnsd lives in AzielEliab/qnm-node. Runtime cites + catalog field
  * live in AzielEliab/aziel-runtime. AZInterface has pair custody.
  * Not a Softwares-tab product. No public qnsd proxy. No Node Gate.
@@ -9,6 +10,8 @@
  * /v1/mesh/* PROXY to aziel-runtime (AZIEL_RUNTIME binding).
  * Author: Aziel Eliab only.
  */
+
+import { attachWires, GATE_DWELL_S, REHEAL_SPEC, SURVIVAL_SPEC, TICK_MAX_MS, TICK_MIN_MS, WIRES_SPEC } from "./wires.js";
 
 const RUNTIME = "https://aziel-runtime.vibelock.workers.dev";
 const FRAGGATE_MCP = "https://aziel-runtime.vibelock.workers.dev/mcp";
@@ -74,8 +77,27 @@ export const QNS_CD = Object.freeze({
   note: "Hub cite / Worker mesh cross-map only. Not a Softwares-tab product. Local qnsd lives in qnm-node. Runtime cites + catalog field live in aziel-runtime. AZInterface has pair custody. No public qnsd proxy. Author: Aziel Eliab only.",
 });
 
+export const WIRES_SPEC_CITE = "SPLIT-THE-WIRES-1.0";
+export const SURVIVAL_SPEC_CITE = "COLD-COPY-SURVIVAL-1.0";
+export const MESH_TICK_MIN_MS = 500;
+export const MESH_TICK_MAX_MS = 1000;
+export const MESH_GATE_DWELL_S = 777;
+export const MESH_TICK_SOCKET = "tick";
+export const MESH_GATE_SOCKET = "gate";
+export const MESH_PUSH_FANOUT = false;
+export const MESH_LIVE_BODY_SYNC = false;
+export const MESH_AUTO_SPLICE = false;
+export const MESH_MIN_COLD_COPIES = 3;
+export const MESH_HASH_ABSOLUTE = true;
+export const MESH_OUTLIVES_CREATORS = true;
+export const MESH_SINGLE_SERVER_CAN_KILL = false;
+export const REHEAL_SPEC_CITE = "REHEAL-1.0";
+export const MESH_NEIGHBOR_VOTE_TO_FIX = false;
+export const MESH_ALLOWED_CHATTER = Object.freeze(["live", "locked", "isolated", "tip_hash"]);
+export const MESH_PHOENIX_WAIT = "phoenix-WAIT";
+
 export const MESH_NOTE =
-  "QNM-BUILD-1.0. QNS-CD-1.0 photon QNS1 packet transfer (hub cite / Worker mesh cross-map only; local qnsd in qnm-node; not a Softwares-tab product; no public qnsd proxy). Suite mesh default off. Live|locked|isolated counts only. No Node Gate. No auto-heal. Not an anonymity network. Author: Aziel Eliab only.";
+  "QNM-BUILD-1.0. QNS-CD-1.0 photon QNS1 packet transfer (hub cite / Worker mesh cross-map only; local qnsd in qnm-node; not a Softwares-tab product; no public qnsd proxy). SPLIT-THE-WIRES-1.0. COLD-COPY-SURVIVAL-1.0. REHEAL-1.0 (own tip + trusted pull or phoenix-WAIT; chatter live|locked|isolated|tip-hash only; no vote-to-fix). Suite mesh default off. Live|locked|isolated counts only. No Node Gate. No auto-heal. Not an anonymity network. Author: Aziel Eliab only.";
 
 /** Stamp the QNS-CD-1.0 cross-map onto a mesh / Live Nodes envelope. */
 export function attachQnsCd(data) {
@@ -226,6 +248,16 @@ export function emptyMesh(extra = {}) {
     anonymity_network: false,
     author: MESH_IDENTITY,
     identity: MESH_IDENTITY,
+    wires_spec: WIRES_SPEC,
+    survival_spec: SURVIVAL_SPEC,
+    tick_ms: [TICK_MIN_MS, TICK_MAX_MS],
+    gate_dwell_s: GATE_DWELL_S,
+    push_fanout: false,
+    live_body_sync: false,
+    auto_splice: false,
+    reheal_spec: REHEAL_SPEC,
+    allowed_chatter: ["live", "locked", "isolated", "tip_hash"],
+    neighbor_vote_to_fix: false,
   };
 }
 
@@ -327,6 +359,22 @@ export function publicMesh(mesh) {
     origin: RUNTIME + MESH_PATH,
     qns_cd_spec: QNS_CD_SPEC,
     qns_cd: QNS_CD,
+    wires_spec: WIRES_SPEC_CITE,
+    survival_spec: SURVIVAL_SPEC_CITE,
+    tick_ms: [MESH_TICK_MIN_MS, MESH_TICK_MAX_MS],
+    gate_dwell_s: MESH_GATE_DWELL_S,
+    sockets: { tick: MESH_TICK_SOCKET, gate: MESH_GATE_SOCKET, shared: false },
+    push_fanout: MESH_PUSH_FANOUT,
+    live_body_sync: MESH_LIVE_BODY_SYNC,
+    auto_splice: MESH_AUTO_SPLICE,
+    min_cold_copies: MESH_MIN_COLD_COPIES,
+    hash_absolute: MESH_HASH_ABSOLUTE,
+    outlives_creators: MESH_OUTLIVES_CREATORS,
+    single_server_can_kill: MESH_SINGLE_SERVER_CAN_KILL,
+    reheal_spec: REHEAL_SPEC_CITE,
+    allowed_chatter: MESH_ALLOWED_CHATTER.slice(),
+    neighbor_vote_to_fix: MESH_NEIGHBOR_VOTE_TO_FIX,
+    phoenix: MESH_PHOENIX_WAIT,
     note: m.note || MESH_NOTE,
   };
 }
@@ -367,7 +415,14 @@ export function meshPointer() {
     origin: RUNTIME + MESH_PATH,
     qns_cd_spec: QNS_CD_SPEC,
     qns_cd: QNS_CD,
-    note: "PROXY to aziel-runtime /v1/mesh/* via AZIEL_RUNTIME. Not a local op. Not AnonBroadcast. Not AZMail's product-local ring. AzielTether remains a central×decentral software tether. Public HTTPS boards stay mesh-free. Full node process is local qnm-node/. QNS-CD-1.0 photon QNS1 packet transfer is a hub cite / Worker mesh cross-map only — no public qnsd proxy. " + MESH_NOTE,
+    wires_spec: WIRES_SPEC_CITE,
+    survival_spec: SURVIVAL_SPEC_CITE,
+    tick_ms: [MESH_TICK_MIN_MS, MESH_TICK_MAX_MS],
+    gate_dwell_s: MESH_GATE_DWELL_S,
+    sockets: { tick: "tick", gate: "gate", shared: false },
+    push_fanout: false,
+    live_body_sync: false,
+    note: "PROXY to aziel-runtime /v1/mesh/* via AZIEL_RUNTIME. Not a local op. Not AnonBroadcast. Not AZMail's product-local ring. AzielTether remains a central×decentral software tether. Public HTTPS boards stay mesh-free. Full node process is local qnm-node/. QNS-CD-1.0 photon QNS1 packet transfer is a hub cite / Worker mesh cross-map only — no public qnsd proxy. SPLIT-THE-WIRES-1.0 + COLD-COPY-SURVIVAL-1.0. " + MESH_NOTE,
     anon_broadcast: ANON_BROADCAST,
     anon_broadcast_publish_path: false,
   };
@@ -606,7 +661,7 @@ export async function runMeshProxy(env, request, pathAndQuery) {
   }
 
   if (method === "HEAD") {
-    return { status: res.status, data: attachQnsCd({ ok: res.ok, code: res.ok ? "MESH-OK" : "MESH-ERR", door: "mesh", via, enabled: false }) };
+    return { status: res.status, data: attachWires(attachQnsCd({ ok: res.ok, code: res.ok ? "MESH-OK" : "MESH-ERR", door: "mesh", via, enabled: false })) };
   }
 
   const text = await res.text();
@@ -630,7 +685,7 @@ export async function runMeshProxy(env, request, pathAndQuery) {
       }),
     };
   }
-  return { status: res.status, data: attachQnsCd(data) };
+  return { status: res.status, data: attachWires(attachQnsCd(data)) };
 }
 
 /**
@@ -640,5 +695,5 @@ export async function runMeshProxy(env, request, pathAndQuery) {
 export async function handleMeshApi(request, url, env) {
   if (!isMeshPath(url.pathname)) return null;
   const result = await runMeshProxy(env, request, url.pathname + (url.search || ""));
-  return meshJson(attachQnsCd(result.data), result.status);
+  return meshJson(attachWires(attachQnsCd(result.data)), result.status);
 }
