@@ -226,6 +226,28 @@ class Store:
             urls.append(url)
         return self.set_shelf_urls(urls)
 
+    @property
+    def zenodo_path(self) -> Path:
+        return self.home / "zenodo.json"
+
+    def zenodo(self) -> dict[str, Any]:
+        rec = self._read_json(self.zenodo_path, {})
+        return rec if isinstance(rec, dict) else {}
+
+    def set_zenodo(self, *, doi: str | None = None, url: str | None = None) -> dict[str, Any]:
+        """Persist Plane B config. Invented DOIs are refused by the caller."""
+        rec = self.zenodo()
+        if doi is not None:
+            rec["doi"] = str(doi).strip()
+        if url is not None:
+            rec["url"] = str(url).strip()
+        rec["author"] = "Aziel Eliab"
+        rec["person_id"] = "https://www.azieleliab.com/#aziel"
+        rec["plane"] = "B"
+        rec["slot_until_doi_live"] = True
+        self._write_json(self.zenodo_path, rec)
+        return rec
+
     def multiply_copies(self, n: int = MIN_COLD_COPIES) -> dict[str, Any]:
         """Seal every verified item into N local cold-copy slots."""
         chain = self.chain()

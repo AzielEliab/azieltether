@@ -32,7 +32,17 @@ store the chain. Claiming it holds durable tips after a yank is a lie.
 
 Worker-up pulls **Plane A**. Worker-down serves last **Plane C**. Restore
 reconciles by hash (never rewrite). Plane B is pulled only when a real
-Zenodo DOI/URL is configured.
+Zenodo DOI is LIVE **and** `AZIELTETHER_ZENODO_URL` (or `--zenodo-url`)
+is a `zenodo.org` file. A URL without a live DOI stays SLOT. No invented
+DOIs or CIDs.
+
+```bash
+azieltether shelf status --zenodo-doi 10.5281/zenodo.123456 \
+  --zenodo-url https://zenodo.org/records/123456/files/manifest.json
+azieltether shelf sync --zenodo-doi 10.5281/zenodo.123456 \
+  --zenodo-url https://zenodo.org/records/123456/files/manifest.json \
+  --sha256 <64 lowercase hex>
+```
 
 ## Law
 

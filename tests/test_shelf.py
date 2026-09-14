@@ -291,3 +291,33 @@ def test_operator_planes_a_b_c(monkeypatch: pytest.MonkeyPatch) -> None:
     live = plane_b_status(doi="10.5281/zenodo.123456", url="https://zenodo.org/records/123456/files/shelf.json")
     assert live["ok"] is True
     assert live["doi_live"] is True
+    url_only = plane_b_status(doi="", url="https://zenodo.org/records/123456/files/shelf.json")
+    assert url_only["ok"] is False
+    assert url_only["code"] == "SHELF-SLOT-ZENODO-DOI"
+
+
+def test_plane_b_pulls_only_when_doi_live(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("AZIELTETHER_ZENODO_DOI", raising=False)
+    monkeypatch.delenv("AZIELTETHER_ZENODO_URL", raising=False)
+    st = _home(tmp_path)
+    fetched: list[str] = []
+
+    def fake_fetch(url: str, *, expected_sha256: str | None = None, timeout: float | None = None):
+        fetched.append(url)
+        return {"ok": False, "code": "SHELF-FETCH-FAILED", "url": url}
+
+    monkeypatch.setattr("azieltether.shelf.fetch_manifest", fake_fetch)
+    zenodo = "https://zenodo.org/records/123456/files/shelf.json"
+    down = shelf_sync(st, probe=False, incoming={"zenodo_url": zenodo})
+    assert down["active_plane"] == "C"
+    assert down["planes"]["B"]["doi_live"] is False
+    assert zenodo not in fetched
+    live = shelf_sync(
+        st,
+        probe=False,
+        incoming={"zenodo_doi": "10.5281/zenodo.123456", "zenodo_url": zenodo},
+    )
+    assert live["planes"]["B"]["doi_live"] is True
+    assert zenodo in fetched
+    cid = shelf_sync(st, probe=False, incoming={"cid": "QmFakeNotReal"})
+    assert cid["code"] == "SHELF-LIE-REFUSED"

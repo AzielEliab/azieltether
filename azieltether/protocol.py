@@ -526,15 +526,22 @@ def shelf_sync(
     host: str | None = None,
     probe: bool = True,
     incoming: dict[str, Any] | None = None,
+    zenodo_doi: str | None = None,
+    zenodo_url: str | None = None,
 ) -> dict[str, Any]:
-    """Prefer Worker when up; last local shelf when down; hash reconcile on restore."""
+    """Worker-up pulls Plane A; Worker-down serves Plane C; restore is hash-only."""
     from azieltether.shelf import shelf_sync as _sync
 
+    body = dict(incoming or {})
+    if zenodo_doi is not None:
+        body["zenodo_doi"] = zenodo_doi
+    if zenodo_url is not None:
+        body["zenodo_url"] = zenodo_url
     return _sync(
         store or Store(),
         urls=urls,
         expected_sha256=expected_sha256,
         host=host,
         probe=probe,
-        incoming=incoming,
+        incoming=body or None,
     )

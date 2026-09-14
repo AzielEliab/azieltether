@@ -80,3 +80,6 @@ def test_cli_wires_and_survival(tmp_path: Path, capsys) -> None:
     assert main(["--home", str(home), "shelf", "slot", "--name", "ipfs"]) == 1
     slot = json.loads(capsys.readouterr().out)
     assert slot["code"] == "SHELF-SLOT-IPFS"
+    assert main(["--home", str(home), "shelf", "sync", "--no-probe", "--zenodo-doi", "10.5281/zenodo.XXXX"]) == 1
+    bad = json.loads(capsys.readouterr().out)
+    assert bad["code"] == "SHELF-DOI-REFUSED"

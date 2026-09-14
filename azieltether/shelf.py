@@ -322,13 +322,6 @@ def plane_b_status(*, doi: str | None = None, url: str | None = None) -> dict[st
     """Zenodo tip-pack. SLOT until a real DOI is configured. No invented DOIs."""
     raw_doi = (doi if doi is not None else os.environ.get(ZENODO_DOI_ENV, "")).strip()
     raw_url = (url if url is not None else os.environ.get(ZENODO_URL_ENV, "")).strip()
-    if not raw_doi and not raw_url:
-        rec = refuse_slot("zenodo_doi")
-        rec["plane"] = PLANE_B
-        rec["name"] = "zenodo-tip-pack"
-        rec["survives_cf_yank"] = True
-        rec["doi_live"] = False
-        return rec
     if raw_doi and not doi_is_live(raw_doi):
         return _refuse(
             "SHELF-DOI-REFUSED",
@@ -337,25 +330,41 @@ def plane_b_status(*, doi: str | None = None, url: str | None = None) -> dict[st
             doi=raw_doi,
             doi_live=False,
         )
+    if not doi_is_live(raw_doi):
+        rec = refuse_slot("zenodo_doi")
+        rec["plane"] = PLANE_B
+        rec["name"] = "zenodo-tip-pack"
+        rec["survives_cf_yank"] = True
+        rec["doi_live"] = False
+        rec["url"] = raw_url or None
+        rec["note"] = "Plane B is SLOT until a real Zenodo DOI is set. A URL alone is not LIVE."
+        return rec
     if raw_url and "zenodo.org" not in raw_url.lower():
         return _refuse(
             "SHELF-DOI-REFUSED",
-            "Plane B URL must be a zenodo.org file when DOI is LIVE.",
+            "Plane B URL must be a zenodo.org file when DOI is LIVE. No invented hosts.",
             plane=PLANE_B,
             url=raw_url,
+            doi=raw_doi,
+            doi_live=True,
         )
     return {
         "ok": True,
         "code": "SHELF-PLANE-B-LIVE",
         "plane": PLANE_B,
         "name": "zenodo-tip-pack",
-        "doi": raw_doi or None,
+        "doi": raw_doi,
         "url": raw_url or None,
         "doi_live": True,
         "live": True,
+        "pull": bool(raw_url),
         "survives_cf_yank": True,
         "author": SHELF_AUTHOR,
-        "note": "DOI LIVE. Fetch + SHA-256 verify only. Auto-deposit remains SLOT.",
+        "note": (
+            "DOI LIVE. Fetch + SHA-256 verify only. Auto-deposit remains SLOT."
+            if raw_url
+            else "DOI LIVE. Set AZIELTETHER_ZENODO_URL (zenodo.org file) to pull the tip-pack."
+        ),
     }
 
 
@@ -919,12 +928,23 @@ def shelf_sync(
     ingest_acks: list[str] = []
     card: dict[str, Any] = {}
     plane_a_pull: dict[str, Any] = {**plane_a_card(), "pulled": False}
+    stored = st.zenodo()
     plane_b = plane_b_status(
-        doi=incoming["zenodo_doi"] if incoming and "zenodo_doi" in incoming else None,
-        url=incoming["zenodo_url"] if incoming and "zenodo_url" in incoming else None,
+        doi=(
+            incoming["zenodo_doi"]
+            if incoming and "zenodo_doi" in incoming
+            else (stored.get("doi") or None)
+        ),
+        url=(
+            incoming["zenodo_url"]
+            if incoming and "zenodo_url" in incoming
+            else (stored.get("url") or None)
+        ),
     )
     if incoming and incoming.get("zenodo_doi") and not plane_b.get("ok"):
         return plane_b
+    if incoming and ("zenodo_doi" in incoming or "zenodo_url" in incoming) and plane_b.get("code") != "SHELF-DOI-REFUSED":
+        st.set_zenodo(doi=incoming.get("zenodo_doi"), url=incoming.get("zenodo_url"))
     if plane_b.get("ok") and plane_b.get("url"):
         urls = list(urls or []) + [str(plane_b["url"])]
 

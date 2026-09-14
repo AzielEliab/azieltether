@@ -140,6 +140,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p_sh.add_argument("--host", default=None, help="Override central Worker host.")
     p_sh.add_argument("--no-probe", action="store_true", help="Do not call the Worker.")
     p_sh.add_argument("--name", default=None, help="MOCK/SLOT name to refuse (ipfs, multihome_dns, …).")
+    p_sh.add_argument("--zenodo-doi", default=None, help="Plane B DOI. SLOT until a real 10.xxxx/zenodo.<id>.")
+    p_sh.add_argument("--zenodo-url", default=None, help="Plane B zenodo.org file URL. Pulled only when DOI is LIVE.")
 
     p_imp = sub.add_parser("import", help="Import a JSON export.")
     p_imp.add_argument("file")
@@ -364,12 +366,22 @@ def main(argv: Sequence[str] | None = None) -> int:
                 _print_json(rec)
                 return 0 if rec.get("ok") else 1
             if action == "status":
+                from azieltether.shelf import plane_a_card, plane_b_status, plane_c_card
+
+                if args.zenodo_doi or args.zenodo_url:
+                    st.set_zenodo(doi=args.zenodo_doi, url=args.zenodo_url)
                 last = load_last_shelf(st)
+                stored = st.zenodo()
                 _print_json(
                     {
                         "ok": True,
                         "author": "Aziel Eliab",
                         "shelf": law_card(),
+                        "planes": {
+                            "A": plane_a_card(),
+                            "B": plane_b_status(doi=stored.get("doi") or None, url=stored.get("url") or None),
+                            "C": plane_c_card(),
+                        },
                         "last": {k: v for k, v in last.items() if k != "manifest"} if last.get("ok") else last,
                         "manifest": (last.get("manifest") if last.get("ok") else None),
                     }
@@ -395,12 +407,18 @@ def main(argv: Sequence[str] | None = None) -> int:
             if action == "sync":
                 for url in args.url:
                     st.add_shelf_url(url)
+                incoming = {}
+                if args.zenodo_doi:
+                    incoming["zenodo_doi"] = args.zenodo_doi
+                if args.zenodo_url:
+                    incoming["zenodo_url"] = args.zenodo_url
                 rec = shelf_sync(
                     st,
                     urls=args.url,
                     expected_sha256=args.sha256,
                     host=args.host,
                     probe=not args.no_probe,
+                    incoming=incoming or None,
                 )
                 _print_json(rec)
                 return 0 if rec.get("ok") else 1
