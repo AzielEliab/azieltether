@@ -34,6 +34,11 @@ export const SINGLE_SERVER_CAN_KILL = false;
 export const HASH_ABSOLUTE = true;
 export const OUTLIVES_CREATORS = true;
 export const REHEAL_SPEC = "REHEAL-1.0";
+export const SHELF_SPEC = "COLD-SHELF-TETHER-1.0";
+export const SISTER_SHELF_SPEC = "COLD-MULTI-SHELF-1.0";
+export const CROSS_NETWORK_SPEC = "CROSS-NETWORK-SURVIVAL-1.0";
+export const NO_LIE_SPEC = "NO-LIE-NO-REWRITE-1.0";
+export const PERSON_ID = "https://www.azieleliab.com/#aziel";
 export const NEIGHBOR_VOTE_TO_FIX = false;
 export const ALLOWED_CHATTER = Object.freeze(["live", "locked", "isolated", "tip_hash"]);
 export const PHOENIX_WAIT = "phoenix-WAIT";
@@ -50,6 +55,19 @@ export const SURVIVAL_LAW =
 
 export const REHEAL_LAW =
   "REHEAL. Heal from your own last good tip plus a verified trusted pull, or phoenix-WAIT. No neighbor vote-to-fix. Allowed chatter is live / locked / isolated / tip-hash only. Author: Aziel Eliab only.";
+
+export const SHELF_LAW =
+  "COLD-SHELF TETHER. Prefer Worker when up: probe + ingest-as-receipt, then seal tip+receipts locally. When Worker is dead, serve the last local cold-shelf. On restore, reconcile by hash — never rewrite. Fetch/verify a SHA-256 manifest from operator URLs. Hash mismatch refuses. No rewrite key. No lie-to-survive. Multi-homed DNS, IPFS CIDs, auto-publish, anycast, and AZ Generator are MOCK/SLOT. Sister: aziel-corpus COLD-MULTI-SHELF-1.0. Person @id https://www.azieleliab.com/#aziel. Author: Aziel Eliab only.";
+
+export const SHELF_SLOTS = Object.freeze({
+  multihome_dns: "SHELF-SLOT-MULTIHOME-DNS",
+  ipfs: "SHELF-SLOT-IPFS",
+  auto_publish: "SHELF-SLOT-AUTO-PUBLISH",
+  anycast: "SHELF-SLOT-ANYCAST",
+  az_generator: "SHELF-SLOT-AZ-GENERATOR",
+  zenodo_doi: "SHELF-SLOT-ZENODO-DOI",
+  forge_publish: "SHELF-SLOT-FORGE-PUBLISH",
+});
 
 function hex64(name, value) {
   const text = String(value || "").trim().toLowerCase();
@@ -345,6 +363,12 @@ export function wiresCard() {
     survival_law: SURVIVAL_LAW,
     reheal_spec: REHEAL_SPEC,
     reheal_law: REHEAL_LAW,
+    shelf_spec: SHELF_SPEC,
+    shelf_law: SHELF_LAW,
+    sister_shelf_spec: SISTER_SHELF_SPEC,
+    cross_network: CROSS_NETWORK_SPEC,
+    no_lie: NO_LIE_SPEC,
+    person_id: PERSON_ID,
     neighbor_vote_to_fix: NEIGHBOR_VOTE_TO_FIX,
     allowed_chatter: ALLOWED_CHATTER.slice(),
     phoenix: PHOENIX_WAIT,
@@ -358,6 +382,7 @@ export function attachWires(data) {
     wires_spec: WIRES_SPEC,
     survival_spec: SURVIVAL_SPEC,
     reheal_spec: REHEAL_SPEC,
+    shelf_spec: SHELF_SPEC,
     allowed_chatter: ALLOWED_CHATTER.slice(),
     neighbor_vote_to_fix: NEIGHBOR_VOTE_TO_FIX,
     wires: {
@@ -374,4 +399,96 @@ export function attachWires(data) {
       tip_erase_free: TIP_ERASE_FREE,
     },
   };
+}
+
+export function shelfCard() {
+  return {
+    ok: true,
+    spec: SHELF_SPEC,
+    sister_spec: SISTER_SHELF_SPEC,
+    cross_network: CROSS_NETWORK_SPEC,
+    no_lie: NO_LIE_SPEC,
+    product: "azieltether",
+    author: WIRES_AUTHOR,
+    identity: WIRES_AUTHOR,
+    person_id: PERSON_ID,
+    durable_store: false,
+    zero_retention: true,
+    worker_holds_chain: false,
+    rewrite_key: false,
+    lie_to_survive: false,
+    fan: false,
+    multihome_dns: false,
+    ipfs: false,
+    auto_publish: false,
+    anycast: false,
+    az_generator: false,
+    planes: {
+      A: { plane: "A", hubs: 4, same_tunnel: true, survives_cf_yank: false, live: true },
+      B: { plane: "B", name: "zenodo-tip-pack", live: false, slot: "SHELF-SLOT-ZENODO-DOI" },
+      C: { plane: "C", name: "usb-local-cold-copy", live: true, survives_cf_yank: true },
+    },
+    slots: Object.fromEntries(Object.entries(SHELF_SLOTS).map(([k, v]) => [k, { code: v, live: false }])),
+    law: SHELF_LAW,
+  };
+}
+
+export function refuseShelfSlot(name) {
+  const key = String(name || "").trim().toLowerCase().replace(/-/g, "_").replace(/ /g, "_");
+  const aliases = { dns: "multihome_dns", ipfs_cid: "ipfs", cid: "ipfs", publish: "auto_publish", azgenerator: "az_generator" };
+  const slot = aliases[key] || key;
+  const code = SHELF_SLOTS[slot] || "SHELF-SLOT-UNKNOWN";
+  return {
+    ok: false,
+    code,
+    slot,
+    live: false,
+    mock: true,
+    applied: false,
+    author: WIRES_AUTHOR,
+    person_id: PERSON_ID,
+    note: "MOCK/SLOT. Not live. Do not invent multi-homed DNS or IPFS CIDs.",
+  };
+}
+
+export function refuseRewriteKey(body) {
+  const data = body && typeof body === "object" ? body : {};
+  const keys = ["rewrite_key", "rewrite", "replace_hash", "historian_key", "lie_key", "survive_key"];
+  const hit = keys.filter((k) => data[k]);
+  if (hit.length) {
+    return {
+      ok: false,
+      code: "SHELF-REWRITE-REFUSED",
+      keys: hit,
+      applied: false,
+      author: WIRES_AUTHOR,
+      law: NO_LIE_SPEC,
+      note: "No rewrite key. Corrections are new items.",
+    };
+  }
+  return { ok: true, code: "SHELF-NO-REWRITE", rewrite_key: false, author: WIRES_AUTHOR };
+}
+
+export function refuseLieToSurvive(body) {
+  const data = body && typeof body === "object" ? body : {};
+  if (data.rewrite_to_survive || data.worker_holds_chain || data.ipfs_live || data.multihome_dns || data.anycast) {
+    return {
+      ok: false,
+      code: "SHELF-LIE-REFUSED",
+      applied: false,
+      author: WIRES_AUTHOR,
+      law: NO_LIE_SPEC,
+      note: "No lie-to-survive. Worker is zero-retention. Slots stay MOCK.",
+    };
+  }
+  if (data.worker_up === true && data.worker_actually_up === false) {
+    return {
+      ok: false,
+      code: "SHELF-LIE-REFUSED",
+      applied: false,
+      author: WIRES_AUTHOR,
+      note: "Cannot claim Worker is up when the probe failed.",
+    };
+  }
+  return { ok: true, code: "SHELF-HONEST", author: WIRES_AUTHOR, law: NO_LIE_SPEC };
 }

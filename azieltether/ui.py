@@ -29,6 +29,7 @@ from azieltether.protocol import (
     pulse,
     reconcile,
     reheal,
+    shelf_sync,
 )
 from azieltether.store import Store
 
@@ -111,7 +112,8 @@ PAGE = r"""<!DOCTYPE html>
       only; payload is a receiver pull on the 777s gate. COLD-COPY SURVIVAL:
       multiply sealed copies; no live body sync. REHEAL from own last
       good tip plus a trusted pull, or phoenix-WAIT — no neighbor
-      vote-to-fix. Dual-chain keeps both
+      vote-to-fix. COLD-SHELF TETHER: prefer Worker when up; last local
+      shelf when down; hash reconcile on restore. Dual-chain keeps both
       children of the same prev_hash. Public boards stay mesh-free. Bound
       to 127.0.0.1.
     </p>
@@ -136,6 +138,8 @@ PAGE = r"""<!DOCTYPE html>
     <button type="button" class="ghost" id="dual">Dual-chain</button>
     <button type="button" class="ghost" id="tips">Tips</button>
     <button type="button" class="ghost" id="doctor">Doctor</button>
+    <button type="button" class="ghost" id="shelf-seal">Seal shelf</button>
+    <button type="button" class="ghost" id="shelf-sync">Shelf sync</button>
     <label class="filebtn">Import JSON<input type="file" id="import-json" accept=".json,application/json"></label>
     <button type="button" class="ghost" id="export">Export JSON</button>
   </div>
@@ -145,6 +149,16 @@ PAGE = r"""<!DOCTYPE html>
     <input id="peer" type="text" placeholder="http://127.0.0.1:8875">
     <div class="actions" style="margin-top:0.8rem">
       <button type="button" class="ghost" id="peer-add">Add peer + sync</button>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Cold-shelf URL (GitLab / Codeberg / Zenodo / local path)</legend>
+    <input id="shelf-url" type="text" placeholder="/path/to/manifest.json or https://…/raw/…/manifest.json">
+    <label for="shelf-sha">Expected SHA-256 (required for remote; refuse on mismatch)</label>
+    <input id="shelf-sha" type="text" placeholder="64 lowercase hex">
+    <div class="actions" style="margin-top:0.8rem">
+      <button type="button" class="ghost" id="shelf-pull">Pull + verify</button>
     </div>
   </fieldset>
 
@@ -203,6 +217,15 @@ PAGE = r"""<!DOCTYPE html>
   $("dual").onclick = async () => draw(await get("/api/dual-chain"));
   $("tips").onclick = async () => draw(await post("/api/tip", {}));
   $("doctor").onclick = async () => draw(await get("/api/doctor"));
+  $("shelf-seal").onclick = async () => draw(await post("/api/shelf-seal", {}));
+  $("shelf-sync").onclick = async () => draw(await post("/api/shelf-sync", {
+    url: $("shelf-url").value,
+    sha256: $("shelf-sha").value,
+  }));
+  $("shelf-pull").onclick = async () => draw(await post("/api/shelf-pull", {
+    url: $("shelf-url").value,
+    sha256: $("shelf-sha").value,
+  }));
   $("peer-add").onclick = async () => draw(await post("/api/peer-sync", { peer: $("peer").value }));
   $("import-json").onchange = async () => {
     const f = $("import-json").files && $("import-json").files[0];
@@ -339,6 +362,20 @@ class Handler(BaseHTTPRequestHandler):
                 },
             )
             return
+        if path == "/api/shelf":
+            from azieltether.shelf import law_card, load_last_shelf
+
+            last = load_last_shelf(self._store())
+            self._json(
+                200,
+                {
+                    "ok": True,
+                    "author": "Aziel Eliab",
+                    "shelf": law_card(),
+                    "last": last,
+                },
+            )
+            return
         self._json(404, {"error": "not found"})
 
     def do_POST(self) -> None:  # noqa: N802
@@ -423,6 +460,37 @@ class Handler(BaseHTTPRequestHandler):
                 rec = import_json(tmp, store=store)
                 rec.update(_snapshot(store, "Imported."))
                 self._json(200, rec)
+                return
+            if path == "/api/shelf-seal":
+                from azieltether.shelf import seal_shelf
+
+                rec = seal_shelf(store)
+                rec.update(_snapshot(store, rec.get("code", "shelf-seal")))
+                self._json(200 if rec.get("ok") else 400, rec)
+                return
+            if path == "/api/shelf-sync":
+                url = str(body.get("url") or "").strip()
+                urls = [url] if url else []
+                rec = shelf_sync(
+                    store,
+                    urls=urls,
+                    expected_sha256=str(body.get("sha256") or "").strip() or None,
+                    probe=body.get("probe", True),
+                    incoming=body,
+                )
+                rec.update(_snapshot(store, rec.get("code", "shelf-sync")))
+                self._json(200 if rec.get("ok") else 400, rec)
+                return
+            if path == "/api/shelf-pull":
+                from azieltether.shelf import fetch_manifest, merge_verified_items, seal_shelf
+
+                url = str(body.get("url") or "").strip()
+                rec = fetch_manifest(url, expected_sha256=str(body.get("sha256") or "").strip() or None)
+                if rec.get("ok") and rec.get("manifest", {}).get("items"):
+                    rec["merge"] = merge_verified_items(store, rec["manifest"]["items"])
+                    rec["seal"] = seal_shelf(store)
+                rec.update(_snapshot(store, rec.get("code", "shelf-pull")))
+                self._json(200 if rec.get("ok") else 400, rec)
                 return
         except AzielTetherError as exc:
             self._json(400, {"error": str(exc), "limitation": LIMITATION})

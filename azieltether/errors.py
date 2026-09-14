@@ -33,3 +33,7 @@ class SurvivalError(ProtocolError):
 
 class RehealError(ProtocolError):
     """REHEAL refused a neighbor vote-to-fix or illegal chatter."""
+
+
+class ShelfError(ProtocolError):
+    """COLD-SHELF-TETHER refused mismatch, rewrite, lie, DOI invent, or a MOCK slot."""

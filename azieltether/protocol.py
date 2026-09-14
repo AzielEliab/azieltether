@@ -25,6 +25,7 @@ from azieltether.item import Item
 from azieltether.lattice import bind_surfaces
 from azieltether.queues import harvest
 from azieltether.store import Store
+from azieltether.shelf import SHELF_SPEC
 from azieltether.survival import (
     SURVIVAL_SPEC,
     refuse_live_body_sync,
@@ -59,7 +60,11 @@ LIMITATION = (
     "tether lives in the downloaded software. SPLIT THE WIRES (tick vs "
     "payload; 777s gate). COLD-COPY SURVIVAL (multiply copies; no live "
     "body sync). REHEAL (own last good tip + trusted pull or "
-    "phoenix-WAIT; no neighbor vote-to-fix). Author Aziel Eliab."
+    "phoenix-WAIT; no neighbor vote-to-fix). COLD-SHELF-TETHER "
+    "(Worker up: ingest-as-receipt then seal; Worker dead: last "
+    "local shelf; restore: hash reconcile; SHA-256 manifest from "
+    "operator URLs; no rewrite key; no lie-to-survive). Author "
+    "Aziel Eliab."
 )
 
 
@@ -174,6 +179,7 @@ def pulse(
         "mesh_on_public_boards": False,
         "wires_spec": WIRES_SPEC,
         "survival_spec": SURVIVAL_SPEC,
+        "shelf_spec": SHELF_SPEC,
         "push_fanout": False,
         "live_body_sync": False,
     }
@@ -242,6 +248,7 @@ def reconcile(
         "mesh_on_public_boards": False,
         "wires_spec": WIRES_SPEC,
         "survival_spec": SURVIVAL_SPEC,
+        "shelf_spec": SHELF_SPEC,
         "live_body_sync": False,
     }
 
@@ -427,6 +434,7 @@ def serve_payload(store: Store, body: dict[str, Any], *, socket: str = GATE_SOCK
 
 def wires_report() -> dict[str, Any]:
     from azieltether.reheal import law_card as reheal_card
+    from azieltether.shelf import law_card as shelf_card
     from azieltether.survival import law_card as survival_card
     from azieltether.wires import law_card
 
@@ -437,6 +445,7 @@ def wires_report() -> dict[str, Any]:
         "wires": law_card(),
         "survival": survival_card(),
         "reheal": reheal_card(),
+        "shelf": shelf_card(),
         "law": WIRES_LAW,
         "limitation": LIMITATION,
     }
@@ -503,6 +512,36 @@ def reheal(
         "chatter": filter_chatter(chatter),
         "wires_spec": WIRES_SPEC,
         "survival_spec": SURVIVAL_SPEC,
+        "shelf_spec": SHELF_SPEC,
         "limitation": LIMITATION,
         "vpn": False,
     }
+
+
+def shelf_sync(
+    store: Store | None = None,
+    *,
+    urls: list[str] | None = None,
+    expected_sha256: str | None = None,
+    host: str | None = None,
+    probe: bool = True,
+    incoming: dict[str, Any] | None = None,
+    zenodo_doi: str | None = None,
+    zenodo_url: str | None = None,
+) -> dict[str, Any]:
+    """Worker-up pulls Plane A; Worker-down serves Plane C; restore is hash-only."""
+    from azieltether.shelf import shelf_sync as _sync
+
+    body = dict(incoming or {})
+    if zenodo_doi is not None:
+        body["zenodo_doi"] = zenodo_doi
+    if zenodo_url is not None:
+        body["zenodo_url"] = zenodo_url
+    return _sync(
+        store or Store(),
+        urls=urls,
+        expected_sha256=expected_sha256,
+        host=host,
+        probe=probe,
+        incoming=body or None,
+    )

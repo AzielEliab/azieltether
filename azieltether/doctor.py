@@ -16,6 +16,15 @@ from azieltether.chain import Chain, detect_dual_chain
 from azieltether.item import Item
 from azieltether.lattice import mint_tip
 from azieltether.store import Store
+from azieltether.shelf import (
+    PERSON_ID,
+    SHELF_SPEC,
+    refuse_lie_to_survive,
+    refuse_rewrite_key,
+    refuse_slot,
+    seal_shelf,
+    verify_sha256,
+)
 from azieltether.survival import MIN_COLD_COPIES, multiply_cold_copies, poison_refused, single_server_pull
 from azieltether.wires import (
     GATE_SOCKET,
@@ -154,6 +163,32 @@ def _check_survival() -> Check:
     return _ok("cold-copy survival", f"{MIN_COLD_COPIES} copies")
 
 
+def _check_shelf() -> Check:
+    from azieltether.store import Store
+
+    rewrite = refuse_rewrite_key({"rewrite_key": "please"})
+    if rewrite.get("ok"):
+        return _fail("cold-shelf", "rewrite key accepted")
+    lie = refuse_lie_to_survive(worker_up_claimed=True, worker_actually_up=False)
+    if lie.get("ok"):
+        return _fail("cold-shelf", "lie-to-survive accepted")
+    slot = refuse_slot("ipfs")
+    if slot.get("ok") or slot.get("code") != "SHELF-SLOT-IPFS":
+        return _fail("cold-shelf", "ipfs slot claimed live")
+    mismatch = verify_sha256(b"hello", "0" * 64)
+    if mismatch.get("ok"):
+        return _fail("cold-shelf", "hash mismatch accepted")
+    with tempfile.TemporaryDirectory() as tmp:
+        st = Store(Path(tmp) / "home")
+        st.chain().append("shelf", node_id=st.node_id(), created_at="2026-09-04T00:00:00Z")
+        rec = seal_shelf(st)
+        if not rec.get("ok") or rec.get("spec") != SHELF_SPEC:
+            return _fail("cold-shelf", str(rec.get("code")))
+        if rec.get("person_id") != PERSON_ID:
+            return _fail("cold-shelf", "person @id forked")
+    return _ok("cold-shelf tether", "seal + refuse rewrite/lie/ipfs")
+
+
 def _check_reheal() -> Check:
     from azieltether.reheal import chatter_allowed, decide, refuse_vote_to_fix
 
@@ -179,6 +214,7 @@ CHECKS: tuple[Callable[[], Check], ...] = (
     _check_tip,
     _check_wires,
     _check_survival,
+    _check_shelf,
     _check_reheal,
 )
 

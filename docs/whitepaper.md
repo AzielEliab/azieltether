@@ -116,7 +116,24 @@ fix. Allowed chatter is live / locked / isolated / tip-hash only.
 
 See [REHEAL.md](REHEAL.md).
 
-## 9. What this is not
+## 9. COLD-SHELF TETHER
+
+Non-Cloudflare mirror path so tip/receipts survive a Worker + GitHub
+yank. Prefer Worker when up (ingest-as-receipt, then seal). When the
+Worker is dead, serve the last local cold-shelf. On restore, reconcile
+by hash. Fetch/verify a SHA-256 manifest from operator URLs (GitLab /
+Codeberg raw, Zenodo file, local path). Refuse mismatch. No rewrite
+key. No lie-to-survive.
+
+The hosted Worker is zero-retention. It does not hold the chain.
+Multi-homed DNS, IPFS CIDs, auto-publish, anycast, and AZ Generator
+are MOCK/SLOT with refuse codes. Sister: aziel-corpus
+`COLD-MULTI-SHELF-1.0` — cite the same lockset tip hashes. Person @id
+https://www.azieleliab.com/#aziel.
+
+See [COLD-SHELF-TETHER.md](COLD-SHELF-TETHER.md).
+
+## 10. What this is not
 
 Not a VPN. Not MirageGrid. Not a kernel. Not a truth score. Not a
 backdoor onto godlock.uk or the library. Not Horton. Not Altman.

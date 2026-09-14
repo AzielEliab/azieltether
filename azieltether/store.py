@@ -8,6 +8,8 @@ Default: ``~/.azieltether`` (override ``AZIELTETHER_HOME``).
     peers.json    peer URLs for sync-when-down
     state.json    last pulse / mode
     copies/       multiplied cold copies (COLD-COPY SURVIVAL)
+    shelf/        last sealed cold-shelf (COLD-SHELF-TETHER)
+    shelf-urls.json operator non-CF mirror URLs
     isolated.json peers ended by equivocation
     lockset.json  sealed tip lockset
 
@@ -66,6 +68,14 @@ class Store:
     @property
     def copies_dir(self) -> Path:
         return self.home / "copies"
+
+    @property
+    def shelf_dir(self) -> Path:
+        return self.home / "shelf"
+
+    @property
+    def shelf_urls_path(self) -> Path:
+        return self.home / "shelf-urls.json"
 
     @property
     def isolated_path(self) -> Path:
@@ -190,6 +200,52 @@ class Store:
 
         rec = mint_lockset(self.chain().tip_hashes(), node_id=self.node_id())
         self.write_lockset(rec)
+        return rec
+
+    def shelf_urls(self) -> list[str]:
+        rec = self._read_json(self.shelf_urls_path, {"urls": []})
+        if isinstance(rec, dict):
+            urls = rec.get("urls") or rec.get("peers") or []
+            return [str(u).rstrip("/") for u in urls if str(u).strip()]
+        if isinstance(rec, list):
+            return [str(u).rstrip("/") for u in rec if str(u).strip()]
+        return []
+
+    def set_shelf_urls(self, urls: list[str]) -> list[str]:
+        clean = [str(u).rstrip("/") for u in urls if str(u).strip()]
+        self._write_json(
+            self.shelf_urls_path,
+            {"urls": clean, "author": "Aziel Eliab", "person_id": "https://www.azieleliab.com/#aziel"},
+        )
+        return clean
+
+    def add_shelf_url(self, url: str) -> list[str]:
+        urls = self.shelf_urls()
+        url = url.rstrip("/")
+        if url and url not in urls:
+            urls.append(url)
+        return self.set_shelf_urls(urls)
+
+    @property
+    def zenodo_path(self) -> Path:
+        return self.home / "zenodo.json"
+
+    def zenodo(self) -> dict[str, Any]:
+        rec = self._read_json(self.zenodo_path, {})
+        return rec if isinstance(rec, dict) else {}
+
+    def set_zenodo(self, *, doi: str | None = None, url: str | None = None) -> dict[str, Any]:
+        """Persist Plane B config. Invented DOIs are refused by the caller."""
+        rec = self.zenodo()
+        if doi is not None:
+            rec["doi"] = str(doi).strip()
+        if url is not None:
+            rec["url"] = str(url).strip()
+        rec["author"] = "Aziel Eliab"
+        rec["person_id"] = "https://www.azieleliab.com/#aziel"
+        rec["plane"] = "B"
+        rec["slot_until_doi_live"] = True
+        self._write_json(self.zenodo_path, rec)
         return rec
 
     def multiply_copies(self, n: int = MIN_COLD_COPIES) -> dict[str, Any]:
