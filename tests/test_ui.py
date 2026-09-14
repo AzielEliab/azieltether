@@ -44,6 +44,8 @@ def test_ui_get_root_and_genesis(tmp_path) -> None:
         assert b"REHEAL" in html
         assert b"phoenix-WAIT" in html
         assert b"COLD-SHELF TETHER" in html
+        assert b"Codeberg" in html
+        assert b"sha256sum -c" in html
         assert b"15:20" not in html
         with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=5) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
@@ -126,6 +128,9 @@ def test_ui_get_root_and_genesis(tmp_path) -> None:
             card = json.loads(resp.read().decode("utf-8"))
         assert card["shelf"]["spec"] == "COLD-SHELF-TETHER-1.0"
         assert card["shelf"]["ipfs"] is False
+        assert card["planes"]["B"]["zenodo_dead"] is True
+        assert card["planes"]["C"]["usb_tip_pack_live"] is False
+        assert card["planes"]["C"]["attest"]["code"] == "CNS-OPERATOR-ATTEST"
     finally:
         httpd.shutdown()
         httpd.server_close()

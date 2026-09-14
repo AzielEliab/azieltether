@@ -63,7 +63,9 @@ LIMITATION = (
     "phoenix-WAIT; no neighbor vote-to-fix). COLD-SHELF-TETHER "
     "(Worker up: ingest-as-receipt then seal; Worker dead: last "
     "local shelf; restore: hash reconcile; SHA-256 manifest from "
-    "operator URLs; no rewrite key; no lie-to-survive). Author "
+    "operator URLs; no rewrite key; no lie-to-survive; Plane B SLOT "
+    "until hash-verify on Codeberg/archive.org/GitFlic — Zenodo dead, "
+    "no invented DOI; Plane C USB LIVE after sha256sum -c attest). Author "
     "Aziel Eliab."
 )
 
@@ -528,8 +530,9 @@ def shelf_sync(
     incoming: dict[str, Any] | None = None,
     zenodo_doi: str | None = None,
     zenodo_url: str | None = None,
+    plane_b_url: str | None = None,
 ) -> dict[str, Any]:
-    """Worker-up pulls Plane A; Worker-down serves Plane C; restore is hash-only."""
+    """Worker-up pulls Plane A; Worker-down serves last Plane C; restore is hash-only."""
     from azieltether.shelf import shelf_sync as _sync
 
     body = dict(incoming or {})
@@ -537,6 +540,8 @@ def shelf_sync(
         body["zenodo_doi"] = zenodo_doi
     if zenodo_url is not None:
         body["zenodo_url"] = zenodo_url
+    if plane_b_url is not None:
+        body["plane_b_url"] = plane_b_url
     return _sync(
         store or Store(),
         urls=urls,

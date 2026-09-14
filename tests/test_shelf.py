@@ -12,15 +12,20 @@ import pytest
 
 from azieltether.errors import AppendOnlyError
 from azieltether.shelf import (
+    CNS_OPERATOR_ATTEST,
     CROSS_NETWORK_SPEC,
     NO_LIE_SPEC,
+    OPERATOR_LOCKSET_TIP,
+    OPERATOR_PACK_SHA256,
     PERSON_ID,
     PLANE_A_HUBS,
     SHELF_SPEC,
     SISTER_SPEC,
+    attest_usb,
     classify_url,
     doi_is_live,
     plane_a_card,
+    plane_b_host,
     plane_b_status,
     plane_c_card,
     export_usb,
@@ -30,11 +35,13 @@ from azieltether.shelf import (
     refuse_delete_shelf,
     refuse_fan,
     refuse_lie_to_survive,
+    refuse_operator_attest,
     refuse_rewrite_key,
     refuse_slot,
     seal_shelf,
     serve_last_local,
     sha256_bytes,
+    sha256sum_c,
     shelf_sync,
     verify_sha256,
 )
@@ -63,6 +70,14 @@ def test_law_card_honest() -> None:
     assert card["planes"]["C"]["survives_cf_yank"] is True
     assert card["slots"]["ipfs"]["live"] is False
     assert card["slots"]["ipfs"]["code"] == "SHELF-SLOT-IPFS"
+    assert card["zenodo_dead"] is True
+    assert card["planes"]["B"]["zenodo_dead"] is True
+    assert card["planes"]["B"]["live"] is False
+    assert card["tip_ref"]["lockset_tip"] == OPERATOR_LOCKSET_TIP
+    assert card["tip_ref"]["pack_sha256"] == OPERATOR_PACK_SHA256
+    assert card["lamb_lens"] == "Service→Clarity→Peace"
+    assert card["planes"]["C"]["usb_tip_pack_live"] is False
+    assert card["planes"]["C"]["attest"]["code"] == CNS_OPERATOR_ATTEST
 
 
 def test_refuse_slots() -> None:
@@ -73,6 +88,8 @@ def test_refuse_slots() -> None:
     assert refuse_slot("anycast")["code"] == "SHELF-SLOT-ANYCAST"
     assert refuse_slot("az_generator")["code"] == "SHELF-SLOT-AZ-GENERATOR"
     assert refuse_slot("zenodo_doi")["code"] == "SHELF-SLOT-ZENODO-DOI"
+    assert refuse_slot("plane_b")["code"] == "SHELF-SLOT-ALT-SHELF"
+    assert refuse_slot("gitflic")["code"] == "SHELF-SLOT-ALT-SHELF"
     assert refuse_slot("forge")["code"] == "SHELF-SLOT-FORGE-PUBLISH"
     assert classify_url("ipfs://QmFakeNotReal") == "ipfs"
     assert classify_url("https://example.test/ipfs/QmFake") == "ipfs"
@@ -218,9 +235,18 @@ def test_usb_airgap_roundtrip(tmp_path: Path) -> None:
     assert CROSS_NETWORK_SPEC in readme
     assert NO_LIE_SPEC in readme
     assert "15:20" not in readme
+    assert "sha256sum -c" in readme
+    assert CNS_OPERATOR_ATTEST in readme
+    assert "Zenodo is IP-banned" in readme
+    assert OPERATOR_LOCKSET_TIP in readme
+    assert OPERATOR_PACK_SHA256 in readme
 
     air = Store(tmp_path / "air")
     rec = import_usb(air, usb)
+    assert rec["usb_tip_pack_live"] is False
+    live_claim = import_usb(Store(tmp_path / "claim"), usb, claim_live=True)
+    assert live_claim["ok"] is False
+    assert live_claim["code"] == CNS_OPERATOR_ATTEST
     assert rec["ok"] is True
     assert rec["merge"]["added"] == 1
     assert air.chain()[0].hash == live.chain()[0].hash
@@ -276,29 +302,49 @@ def test_operator_planes_a_b_c(monkeypatch: pytest.MonkeyPatch) -> None:
     c = plane_c_card()
     assert c["survives_cf_yank"] is True
     assert c["forge_publish"] is False
+    assert c["usb_tip_pack_live"] is False
+    assert c["attest"]["code"] == CNS_OPERATOR_ATTEST
     monkeypatch.delenv("AZIELTETHER_ZENODO_DOI", raising=False)
     monkeypatch.delenv("AZIELTETHER_ZENODO_URL", raising=False)
+    monkeypatch.delenv("AZIELTETHER_PLANE_B_URL", raising=False)
     b = plane_b_status()
     assert b["ok"] is False
-    assert b["code"] == "SHELF-SLOT-ZENODO-DOI"
+    assert b["code"] == "SHELF-SLOT-ALT-SHELF"
+    assert b["zenodo_dead"] is True
     assert doi_is_live("") is False
     assert doi_is_live("10.5281/zenodo.example") is False
     assert doi_is_live("10.5281/zenodo.0") is False
     assert doi_is_live("10.5281/zenodo.1") is False
-    assert doi_is_live("10.5281/zenodo.123456") is True
+    assert doi_is_live("10.5281/zenodo.123456") is False
     invented = plane_b_status(doi="10.5281/zenodo.XXXX")
     assert invented["code"] == "SHELF-DOI-REFUSED"
-    live = plane_b_status(doi="10.5281/zenodo.123456", url="https://zenodo.org/records/123456/files/shelf.json")
-    assert live["ok"] is True
-    assert live["doi_live"] is True
+    well_formed = plane_b_status(doi="10.5281/zenodo.123456", url="https://zenodo.org/records/123456/files/shelf.json")
+    assert well_formed["ok"] is False
+    assert well_formed["code"] == "SHELF-DOI-REFUSED"
     url_only = plane_b_status(doi="", url="https://zenodo.org/records/123456/files/shelf.json")
     assert url_only["ok"] is False
     assert url_only["code"] == "SHELF-SLOT-ZENODO-DOI"
+    assert plane_b_host("https://codeberg.org/aziel/shelf/raw/main/manifest.json") == "codeberg.org"
+    assert plane_b_host("https://archive.org/download/aziel/manifest.json") == "archive.org"
+    assert plane_b_host("https://gitflic.ru/project/aziel/shelf/blob/raw?file=manifest.json") == "gitflic.ru"
+    assert plane_b_host("https://zenodo.org/records/1/files/x") is None
+    unverified = plane_b_status(url="https://codeberg.org/aziel/shelf/raw/main/manifest.json")
+    assert unverified["ok"] is False
+    assert unverified["code"] == "SHELF-SLOT-ALT-SHELF"
+    live = plane_b_status(
+        url="https://codeberg.org/aziel/shelf/raw/main/manifest.json",
+        sha256="b" * 64,
+        verified=True,
+    )
+    assert live["ok"] is True
+    assert live["code"] == "SHELF-PLANE-B-LIVE"
+    assert live["doi_live"] is False
 
 
-def test_plane_b_pulls_only_when_doi_live(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_plane_b_pulls_only_when_hash_verified(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("AZIELTETHER_ZENODO_DOI", raising=False)
     monkeypatch.delenv("AZIELTETHER_ZENODO_URL", raising=False)
+    monkeypatch.delenv("AZIELTETHER_PLANE_B_URL", raising=False)
     st = _home(tmp_path)
     fetched: list[str] = []
 
@@ -309,15 +355,60 @@ def test_plane_b_pulls_only_when_doi_live(tmp_path: Path, monkeypatch: pytest.Mo
     monkeypatch.setattr("azieltether.shelf.fetch_manifest", fake_fetch)
     zenodo = "https://zenodo.org/records/123456/files/shelf.json"
     down = shelf_sync(st, probe=False, incoming={"zenodo_url": zenodo})
-    assert down["active_plane"] == "C"
-    assert down["planes"]["B"]["doi_live"] is False
+    assert down["ok"] is False
+    assert down["code"] in {"SHELF-SLOT-ZENODO-DOI", "SHELF-DOI-REFUSED"}
     assert zenodo not in fetched
-    live = shelf_sync(
+    refused = shelf_sync(
         st,
         probe=False,
         incoming={"zenodo_doi": "10.5281/zenodo.123456", "zenodo_url": zenodo},
     )
-    assert live["planes"]["B"]["doi_live"] is True
-    assert zenodo in fetched
+    assert refused["ok"] is False
+    assert refused["code"] == "SHELF-DOI-REFUSED"
+    assert zenodo not in fetched
+    alt = "https://codeberg.org/aziel/shelf/raw/main/manifest.json"
+    slot = shelf_sync(st, probe=False, incoming={"plane_b_url": alt})
+    assert slot["planes"]["B"]["code"] == "SHELF-SLOT-ALT-SHELF"
+    assert alt not in fetched
+    live = shelf_sync(
+        st,
+        probe=False,
+        urls=[alt],
+        expected_sha256="b" * 64,
+        incoming={"plane_b_url": alt},
+    )
+    assert alt in fetched
     cid = shelf_sync(st, probe=False, incoming={"cid": "QmFakeNotReal"})
     assert cid["code"] == "SHELF-LIE-REFUSED"
+
+
+def test_plane_c_usb_attest_after_sha256sum_c(tmp_path: Path) -> None:
+    live = _home(tmp_path / "live")
+    usb = tmp_path / "usb"
+    out = export_usb(live, usb)
+    assert out["ok"] is True
+    bare = refuse_operator_attest()
+    assert bare["ok"] is False
+    assert bare["code"] == CNS_OPERATOR_ATTEST
+    check = sha256sum_c(usb)
+    assert check["ok"] is True
+    assert check["code"] == "SHELF-SHA256SUM-C"
+    air = Store(tmp_path / "air")
+    rec = attest_usb(air, usb)
+    assert rec["ok"] is True
+    assert rec["code"] == "SHELF-OPERATOR-ATTEST"
+    assert rec["usb_tip_pack_live"] is True
+    assert rec["sha256sum_c"] is True
+    assert rec["lockset_tip"] == OPERATOR_LOCKSET_TIP
+    assert rec["tip_ref"]["pack_sha256"] == OPERATOR_PACK_SHA256
+    card = plane_c_card(air)
+    assert card["usb_tip_pack_live"] is True
+    assert card["attest"]["code"] == "SHELF-OPERATOR-ATTEST"
+    missing = attest_usb(Store(tmp_path / "empty"), tmp_path / "no-usb")
+    assert missing["ok"] is False
+    sync = shelf_sync(air, probe=False, incoming={"usb_live": True})
+    assert sync["code"] != CNS_OPERATOR_ATTEST or air.plane_c_attest().get("usb_tip_pack_live")
+    unattested = Store(tmp_path / "down")
+    refused = shelf_sync(unattested, probe=False, incoming={"usb_live": True})
+    assert refused["ok"] is False
+    assert refused["code"] == CNS_OPERATOR_ATTEST

@@ -42,7 +42,7 @@ const LIMITATION =
 
 const SKILL = `---
 name: AzielTether
-description: Use when preferring a central Worker, peer-syncing hash-chained work while it is down, reconciling on restore, or minting lattice tips across GodLock / Aziel Digital Library / product Workers. Dual surface: Worker /v1 + catalog MCP. This Worker /v1/mesh/* PROXY to aziel-runtime via AZIEL_RUNTIME. Suite mesh default OFF. QNM-BUILD-1.0 live|locked|isolated. QNS-CD-1.0 photon QNS1 packet transfer is a hub cite / Worker mesh cross-map only (local qnsd in qnm-node; no public qnsd proxy; not a Softwares-tab product). SPLIT-THE-WIRES-1.0 (tick vs 777s gate). COLD-COPY-SURVIVAL-1.0 (multiply copies; no live body sync). REHEAL-1.0 (own last good tip + trusted pull or phoenix-WAIT; no neighbor vote-to-fix; chatter live|locked|isolated|tip-hash only). COLD-SHELF-TETHER-1.0 (Worker up: ingest-as-receipt then seal; Worker dead: last local shelf; restore: hash reconcile; SHA-256 manifest from operator URLs; no rewrite key; no lie-to-survive; multi-homed DNS / IPFS / auto-publish / AZ Generator are MOCK/SLOT). No Node Gate. No auto-heal. Not anonymity. Software tether, not a VPN. Author Aziel Eliab.
+description: Use when preferring a central Worker, peer-syncing hash-chained work while it is down, reconciling on restore, or minting lattice tips across GodLock / Aziel Digital Library / product Workers. Dual surface: Worker /v1 + catalog MCP. This Worker /v1/mesh/* PROXY to aziel-runtime via AZIEL_RUNTIME. Suite mesh default OFF. QNM-BUILD-1.0 live|locked|isolated. QNS-CD-1.0 photon QNS1 packet transfer is a hub cite / Worker mesh cross-map only (local qnsd in qnm-node; no public qnsd proxy; not a Softwares-tab product). SPLIT-THE-WIRES-1.0 (tick vs 777s gate). COLD-COPY-SURVIVAL-1.0 (multiply copies; no live body sync). REHEAL-1.0 (own last good tip + trusted pull or phoenix-WAIT; no neighbor vote-to-fix; chatter live|locked|isolated|tip-hash only). COLD-SHELF-TETHER-1.0 (Worker up: Plane A ingest-as-receipt then seal; Worker dead: last Plane C local shelf; restore: hash reconcile never rewrite; Plane B SLOT until hash-verify on Codeberg/archive.org/GitFlic — Zenodo IP-banned, no invented DOI; Plane C USB LIVE after sha256sum -c attest / CNS-OPERATOR-ATTEST until then; SHA-256 manifest from operator URLs; no rewrite key; no lie-to-survive; multi-homed DNS / IPFS / auto-publish / AZ Generator are MOCK/SLOT). No Node Gate. No auto-heal. Not anonymity. Software tether, not a VPN. Author Aziel Eliab.
 ---
 
 # AzielTether
@@ -799,6 +799,17 @@ export async function handleRuntimeApi(request, url) {
     if (!rewrite.ok) return json({ ...rewrite, product: PRODUCT, version: VERSION, limitation: LIMITATION });
     const lie = refuseLieToSurvive(body);
     if (!lie.ok) return json({ ...lie, product: PRODUCT, version: VERSION, limitation: LIMITATION });
+    if (body.zenodo_doi || body.doi) {
+      return json({
+        ok: false,
+        code: "SHELF-DOI-REFUSED",
+        product: PRODUCT,
+        version: VERSION,
+        limitation: LIMITATION,
+        zenodo_dead: true,
+        note: "Zenodo is IP-banned. Do not invent a DOI.",
+      });
+    }
     if (body.slot || body.ipfs || body.cid || body.multihome_dns) {
       return json({
         ...refuseShelfSlot(body.slot || (body.cid || body.ipfs ? "ipfs" : "multihome_dns")),

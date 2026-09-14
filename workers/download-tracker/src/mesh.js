@@ -98,7 +98,7 @@ export const MESH_ALLOWED_CHATTER = Object.freeze(["live", "locked", "isolated",
 export const MESH_PHOENIX_WAIT = "phoenix-WAIT";
 
 export const MESH_NOTE =
-  "QNM-BUILD-1.0. QNS-CD-1.0 photon QNS1 packet transfer (hub cite / Worker mesh cross-map only; local qnsd in qnm-node; not a Softwares-tab product; no public qnsd proxy). SPLIT-THE-WIRES-1.0. COLD-COPY-SURVIVAL-1.0. REHEAL-1.0 (own tip + trusted pull or phoenix-WAIT; chatter live|locked|isolated|tip-hash only; no vote-to-fix). COLD-SHELF-TETHER-1.0 (last local shelf when Worker dead; hash reconcile on restore; no rewrite key; no lie-to-survive; IPFS/multi-home DNS are SLOT). Suite mesh default off. Live|locked|isolated counts only. No Node Gate. No auto-heal. Not an anonymity network. Author: Aziel Eliab only.";
+  "QNM-BUILD-1.0. QNS-CD-1.0 photon QNS1 packet transfer (hub cite / Worker mesh cross-map only; local qnsd in qnm-node; not a Softwares-tab product; no public qnsd proxy). SPLIT-THE-WIRES-1.0. COLD-COPY-SURVIVAL-1.0. REHEAL-1.0 (own tip + trusted pull or phoenix-WAIT; chatter live|locked|isolated|tip-hash only; no vote-to-fix). COLD-SHELF-TETHER-1.0 (Worker-up Plane A; Worker-down last Plane C; restore hash reconcile never rewrite; Plane B SLOT until hash-verify on Codeberg/archive.org/GitFlic; Zenodo dead no invented DOI; USB LIVE after sha256sum -c attest; no rewrite key; no lie-to-survive; IPFS/multi-home DNS are SLOT). Suite mesh default off. Live|locked|isolated counts only. No Node Gate. No auto-heal. Not an anonymity network. Author: Aziel Eliab only.";
 
 /** Stamp the QNS-CD-1.0 cross-map onto a mesh / Live Nodes envelope. */
 export function attachQnsCd(data) {

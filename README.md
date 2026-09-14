@@ -106,13 +106,16 @@ Isolated counter: Worker `azieltether-download-tracker`, KV `AZIELTETHER_DOWNLOA
    verified trusted pull, or phoenix-WAIT. No neighbor vote-to-fix.
    Allowed chatter is live / locked / isolated / tip-hash only.
 9. **COLD-SHELF TETHER** (`COLD-SHELF-TETHER-1.0`). Prefer Worker when
-   up (ingest-as-receipt, then seal). When Worker is dead, serve the
-   last local cold-shelf. On restore, reconcile by hash — never rewrite.
-   Fetch/verify a SHA-256 manifest from GitLab/Codeberg raw, Zenodo, or
-   a local path. Refuse mismatch. No rewrite key. No lie-to-survive.
-   Multi-homed DNS, IPFS CIDs, auto-publish, and AZ Generator are
-   MOCK/SLOT. Sister: aziel-corpus `COLD-MULTI-SHELF-1.0` (same lockset
-   tip hashes). Person @id `https://www.azieleliab.com/#aziel`.
+   up (Plane A: ingest-as-receipt, then seal). When Worker is dead,
+   serve the last Plane C local cold-shelf. On restore, reconcile by
+   hash — never rewrite. Plane B is SLOT until SHA-256 verify on
+   Codeberg, archive.org, or GitFlic. Zenodo is IP-banned — do not
+   invent a DOI. USB tip-pack goes LIVE only after `sha256sum -c` plus
+   operator attest (`CNS-OPERATOR-ATTEST` until then). No rewrite key.
+   No lie-to-survive. Multi-homed DNS, IPFS CIDs, auto-publish, and AZ
+   Generator are MOCK/SLOT. Sister: aziel-corpus `COLD-MULTI-SHELF-1.0`
+   (same lockset tip hashes). Lamb Lens: Service→Clarity→Peace.
+   Person @id `https://www.azieleliab.com/#aziel`.
 
 Law: [docs/SPLIT-THE-WIRES.md](docs/SPLIT-THE-WIRES.md) ·
 [docs/COLD-COPY-SURVIVAL.md](docs/COLD-COPY-SURVIVAL.md) ·
@@ -144,8 +147,9 @@ azieltether survival
 azieltether reheal
 azieltether shelf
 azieltether shelf seal
-azieltether shelf sync
+azieltether shelf sync --plane-b-url https://codeberg.org/… --sha256 <hex>
 azieltether shelf usb --dest /media/usb/aziel-shelf
+azieltether shelf attest --src /media/usb/aziel-shelf
 ```
 
 ## iPhone & Android

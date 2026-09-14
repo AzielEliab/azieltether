@@ -175,6 +175,15 @@ def _check_shelf() -> Check:
     slot = refuse_slot("ipfs")
     if slot.get("ok") or slot.get("code") != "SHELF-SLOT-IPFS":
         return _fail("cold-shelf", "ipfs slot claimed live")
+    from azieltether.shelf import CNS_OPERATOR_ATTEST, doi_is_live, plane_b_status, refuse_operator_attest
+
+    if doi_is_live("10.5281/zenodo.123456"):
+        return _fail("cold-shelf", "Zenodo DOI claimed live")
+    if plane_b_status(doi="10.5281/zenodo.123456").get("ok"):
+        return _fail("cold-shelf", "invented DOI accepted")
+    attest = refuse_operator_attest()
+    if attest.get("ok") or attest.get("code") != CNS_OPERATOR_ATTEST:
+        return _fail("cold-shelf", "USB LIVE without attest")
     mismatch = verify_sha256(b"hello", "0" * 64)
     if mismatch.get("ok"):
         return _fail("cold-shelf", "hash mismatch accepted")

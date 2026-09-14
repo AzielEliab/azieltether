@@ -17,7 +17,7 @@
     azieltether wires
     azieltether survival
     azieltether reheal
-    azieltether shelf [status|seal|pull|sync|usb|usb-import|slot]
+    azieltether shelf [status|seal|pull|sync|usb|usb-import|attest|slot]
     azieltether status
     azieltether node-id
 
@@ -130,8 +130,8 @@ def _build_parser() -> argparse.ArgumentParser:
         "action",
         nargs="?",
         default="status",
-        choices=["status", "seal", "pull", "sync", "usb", "usb-import", "slot"],
-        help="status (default), seal, pull, sync, usb, usb-import, slot",
+        choices=["status", "seal", "pull", "sync", "usb", "usb-import", "attest", "slot"],
+        help="status (default), seal, pull, sync, usb, usb-import, attest, slot",
     )
     p_sh.add_argument("--url", action="append", default=[], help="Shelf URL or local path (repeatable).")
     p_sh.add_argument("--sha256", default=None, dest="sha256", help="Expected SHA-256 (64 lowercase hex).")
@@ -140,8 +140,40 @@ def _build_parser() -> argparse.ArgumentParser:
     p_sh.add_argument("--host", default=None, help="Override central Worker host.")
     p_sh.add_argument("--no-probe", action="store_true", help="Do not call the Worker.")
     p_sh.add_argument("--name", default=None, help="MOCK/SLOT name to refuse (ipfs, multihome_dns, …).")
-    p_sh.add_argument("--zenodo-doi", default=None, help="Plane B DOI. SLOT until a real 10.xxxx/zenodo.<id>.")
-    p_sh.add_argument("--zenodo-url", default=None, help="Plane B zenodo.org file URL. Pulled only when DOI is LIVE.")
+    p_sh.add_argument(
+        "--zenodo-doi",
+        default=None,
+        help="Refused. Zenodo is IP-banned. Do not invent a DOI.",
+    )
+    p_sh.add_argument(
+        "--zenodo-url",
+        default=None,
+        help="Refused. Plane B uses Codeberg / archive.org / GitFlic after hash-verify.",
+    )
+    p_sh.add_argument(
+        "--plane-b-url",
+        default=None,
+        dest="plane_b_url",
+        help="Plane B independent shelf URL (codeberg.org / archive.org / gitflic.ru).",
+    )
+    p_sh.add_argument(
+        "--lockset-tip",
+        default=None,
+        dest="lockset_tip",
+        help="Optional lockset tip cite when attesting a USB tip-pack.",
+    )
+    p_sh.add_argument(
+        "--pack-sha256",
+        default=None,
+        dest="pack_sha256",
+        help="Optional pack bytes SHA-256 when attesting (sha256sum -c).",
+    )
+    p_sh.add_argument(
+        "--attest",
+        action="store_true",
+        dest="operator_attest",
+        help="Operator attests after sha256sum -c (usb-import / attest).",
+    )
 
     p_imp = sub.add_parser("import", help="Import a JSON export.")
     p_imp.add_argument("file")
@@ -368,10 +400,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             if action == "status":
                 from azieltether.shelf import plane_a_card, plane_b_status, plane_c_card
 
-                if args.zenodo_doi or args.zenodo_url:
-                    st.set_zenodo(doi=args.zenodo_doi, url=args.zenodo_url)
+                if args.plane_b_url:
+                    st.set_plane_b(url=args.plane_b_url, sha256=args.sha256, verified=False)
                 last = load_last_shelf(st)
-                stored = st.zenodo()
+                stored = st.plane_b()
+                stored_url = stored.get("url") or None
+                if stored_url and "zenodo" in str(stored_url).lower():
+                    stored_url = None
                 _print_json(
                     {
                         "ok": True,
@@ -379,8 +414,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                         "shelf": law_card(),
                         "planes": {
                             "A": plane_a_card(),
-                            "B": plane_b_status(doi=stored.get("doi") or None, url=stored.get("url") or None),
-                            "C": plane_c_card(),
+                            "B": plane_b_status(
+                                doi=args.zenodo_doi,
+                                url=args.plane_b_url or args.zenodo_url or stored_url,
+                                sha256=args.sha256 or stored.get("sha256"),
+                                verified=bool(stored.get("verified")) and not args.zenodo_doi,
+                            ),
+                            "C": plane_c_card(st),
                         },
                         "last": {k: v for k, v in last.items() if k != "manifest"} if last.get("ok") else last,
                         "manifest": (last.get("manifest") if last.get("ok") else None),
@@ -412,6 +452,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                     incoming["zenodo_doi"] = args.zenodo_doi
                 if args.zenodo_url:
                     incoming["zenodo_url"] = args.zenodo_url
+                if args.plane_b_url:
+                    incoming["plane_b_url"] = args.plane_b_url
                 rec = shelf_sync(
                     st,
                     urls=args.url,
@@ -430,7 +472,28 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if not args.src:
                     _print_json({"ok": False, "error": "shelf usb-import needs --src", "limitation": LIMITATION})
                     return 1
-                rec = import_usb(st, args.src, expected_sha256=args.sha256)
+                rec = import_usb(
+                    st,
+                    args.src,
+                    expected_sha256=args.sha256,
+                    operator_attest=bool(args.operator_attest),
+                )
+                _print_json(rec)
+                return 0 if rec.get("ok") else 1
+            if action == "attest":
+                from azieltether.shelf import attest_usb
+
+                src = args.src or args.dest
+                if not src:
+                    _print_json({"ok": False, "error": "shelf attest needs --src", "limitation": LIMITATION})
+                    return 1
+                rec = attest_usb(
+                    st,
+                    src,
+                    expected_sha256=args.sha256,
+                    pack_sha256=args.pack_sha256,
+                    lockset_tip=args.lockset_tip,
+                )
                 _print_json(rec)
                 return 0 if rec.get("ok") else 1
 

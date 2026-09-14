@@ -10,6 +10,8 @@ Default: ``~/.azieltether`` (override ``AZIELTETHER_HOME``).
     copies/       multiplied cold copies (COLD-COPY SURVIVAL)
     shelf/        last sealed cold-shelf (COLD-SHELF-TETHER)
     shelf-urls.json operator non-CF mirror URLs
+    plane-b.json  Plane B alternate-shelf URL + hash-verify
+    plane-c-attest.json USB tip-pack operator attest (after sha256sum -c)
     isolated.json peers ended by equivocation
     lockset.json  sealed tip lockset
 
@@ -230,12 +232,26 @@ class Store:
     def zenodo_path(self) -> Path:
         return self.home / "zenodo.json"
 
+    @property
+    def plane_b_path(self) -> Path:
+        return self.home / "plane-b.json"
+
+    @property
+    def plane_c_attest_path(self) -> Path:
+        return self.home / "plane-c-attest.json"
+
     def zenodo(self) -> dict[str, Any]:
+        """Heritage file. Zenodo is IP-banned — never LIVE."""
         rec = self._read_json(self.zenodo_path, {})
-        return rec if isinstance(rec, dict) else {}
+        if not isinstance(rec, dict):
+            return {}
+        rec = dict(rec)
+        rec["zenodo_dead"] = True
+        rec["doi_live"] = False
+        return rec
 
     def set_zenodo(self, *, doi: str | None = None, url: str | None = None) -> dict[str, Any]:
-        """Persist Plane B config. Invented DOIs are refused by the caller."""
+        """Heritage persist. Caller must refuse invented DOIs. Never marks LIVE."""
         rec = self.zenodo()
         if doi is not None:
             rec["doi"] = str(doi).strip()
@@ -244,8 +260,60 @@ class Store:
         rec["author"] = "Aziel Eliab"
         rec["person_id"] = "https://www.azieleliab.com/#aziel"
         rec["plane"] = "B"
+        rec["zenodo_dead"] = True
+        rec["doi_live"] = False
         rec["slot_until_doi_live"] = True
         self._write_json(self.zenodo_path, rec)
+        return rec
+
+    def plane_b(self) -> dict[str, Any]:
+        rec = self._read_json(self.plane_b_path, {})
+        if isinstance(rec, dict) and rec:
+            return rec
+        old = self.zenodo()
+        if old.get("url") or old.get("doi"):
+            return {
+                "url": old.get("url") or "",
+                "doi": old.get("doi") or "",
+                "verified": False,
+                "zenodo_dead": True,
+                "author": "Aziel Eliab",
+            }
+        return rec if isinstance(rec, dict) else {}
+
+    def set_plane_b(
+        self,
+        *,
+        url: str | None = None,
+        sha256: str | None = None,
+        verified: bool | None = None,
+    ) -> dict[str, Any]:
+        rec = self.plane_b()
+        if url is not None:
+            rec["url"] = str(url).strip()
+        if sha256 is not None:
+            rec["sha256"] = str(sha256).strip().lower()
+        if verified is not None:
+            rec["verified"] = bool(verified)
+        rec["author"] = "Aziel Eliab"
+        rec["person_id"] = "https://www.azieleliab.com/#aziel"
+        rec["plane"] = "B"
+        rec["zenodo_dead"] = True
+        rec["doi_live"] = False
+        self._write_json(self.plane_b_path, rec)
+        return rec
+
+    def plane_c_attest(self) -> dict[str, Any]:
+        rec = self._read_json(self.plane_c_attest_path, {})
+        return rec if isinstance(rec, dict) else {}
+
+    def set_plane_c_attest(self, payload: dict[str, Any]) -> dict[str, Any]:
+        rec = dict(payload)
+        rec.setdefault("author", "Aziel Eliab")
+        rec.setdefault("person_id", "https://www.azieleliab.com/#aziel")
+        rec.setdefault("plane", "C")
+        rec["updated_at"] = utc_now()
+        self._write_json(self.plane_c_attest_path, rec)
         return rec
 
     def multiply_copies(self, n: int = MIN_COLD_COPIES) -> dict[str, Any]:

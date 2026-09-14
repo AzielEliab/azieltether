@@ -119,11 +119,14 @@ See [REHEAL.md](REHEAL.md).
 ## 9. COLD-SHELF TETHER
 
 Non-Cloudflare mirror path so tip/receipts survive a Worker + GitHub
-yank. Prefer Worker when up (ingest-as-receipt, then seal). When the
-Worker is dead, serve the last local cold-shelf. On restore, reconcile
-by hash. Fetch/verify a SHA-256 manifest from operator URLs (GitLab /
-Codeberg raw, Zenodo file, local path). Refuse mismatch. No rewrite
-key. No lie-to-survive.
+yank. Prefer Worker when up (Plane A: ingest-as-receipt, then seal).
+When the Worker is dead, serve the last Plane C local cold-shelf. On
+restore, reconcile by hash — never rewrite. Fetch/verify a SHA-256
+manifest from operator URLs (Codeberg raw, archive.org, GitFlic, local
+path). Plane B is SLOT until that hash-verify. Zenodo is IP-banned —
+do not invent a DOI. USB tip-pack LIVE after `sha256sum -c` plus
+operator attest (`CNS-OPERATOR-ATTEST` until then). Refuse mismatch.
+No rewrite key. No lie-to-survive. Lamb Lens: Service→Clarity→Peace.
 
 The hosted Worker is zero-retention. It does not hold the chain.
 Multi-homed DNS, IPFS CIDs, auto-publish, anycast, and AZ Generator
