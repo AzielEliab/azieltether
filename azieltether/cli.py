@@ -68,11 +68,14 @@ def _take_json(argv: list[str]) -> tuple[bool, list[str]]:
 
 
 def _cmd(sub: argparse._SubParsersAction, name: str, description: str) -> argparse.ArgumentParser:
+    trailing = argparse.ArgumentParser(add_help=False)
+    trailing.add_argument("--home", default=argparse.SUPPRESS, help=argparse.SUPPRESS)
     return sub.add_parser(
         name,
         help=argparse.SUPPRESS,
         description=description,
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        parents=[trailing],
     )
 
 

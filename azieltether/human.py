@@ -86,7 +86,7 @@ def friendly_arg_error(prog: str, message: str) -> str:
             return "Export needs a file path.\nNext: azieltether export export.json"
         return f"A file path is required.\nNext: azieltether {tail} --help"
     if message.startswith("unrecognized arguments:"):
-        extra = message.split(":", 1)[1].strip()
+        extra = message.split(":", 1)[1].strip().split()[0]
         return f'Unknown option "{extra}". Try: {prog} --help'
     if "expected one argument" in message:
         return f"{message[0].upper()}{message[1:]}.\nNext: {prog} --help"

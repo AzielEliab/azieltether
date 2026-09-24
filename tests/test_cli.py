@@ -141,6 +141,15 @@ def test_cli_genesis_needs_note(capsys) -> None:
     assert 'azieltether genesis --payload "desk closed"' in err
 
 
+def test_cli_home_after_command(tmp_path: Path, capsys) -> None:
+    home = tmp_path / "later"
+    assert main(["append", "--payload", "x", "--home", str(home)]) == 1
+    out = capsys.readouterr().out
+    assert "first item" in out.lower() or "genesis" in out.lower()
+    assert main(["genesis", "--payload", "desk closed", "--home", str(home)]) == 0
+    assert "First item written." in capsys.readouterr().out
+
+
 def test_cli_human_genesis_and_json_error(tmp_path: Path, capsys) -> None:
     home = tmp_path / "home"
     assert main(["--home", str(home), "genesis", "--payload", "desk closed"]) == 0
