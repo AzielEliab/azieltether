@@ -47,6 +47,21 @@ def test_ui_get_root_and_genesis(tmp_path) -> None:
         assert b"Codeberg" in html
         assert b"sha256sum -c" in html
         assert b"15:20" not in html
+        assert b"prefers-color-scheme" in html
+        assert b"focus-visible" in html
+        assert b"Start chain" in html
+        assert b"Advanced" in html
+        assert b"#c9a227" in html
+        assert b"Not a VPN" not in html
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{port}/",
+            headers={"Accept": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            page_json = json.loads(resp.read().decode("utf-8"))
+        assert page_json["product"] == "azieltether"
+        assert page_json["author"] == "Aziel Eliab"
+        assert "items" in page_json
         with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=5) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
         assert payload["ok"] is True

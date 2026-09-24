@@ -26,7 +26,7 @@ python -m pip install -U pip
 python -m pip install -e .
 
 echo
-echo "Installed AzielTether."
-echo "Run:  azieltether ui"
-echo "Then open http://127.0.0.1:8874  (loopback only)"
+echo "Installed."
+echo "Next: azieltether ui"
+echo "Then open http://127.0.0.1:8874 and press Start chain."
 echo "Author: Aziel Eliab."

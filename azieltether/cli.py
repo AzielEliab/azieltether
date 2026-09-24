@@ -1,27 +1,15 @@
 """Command-line interface for AzielTether.
 
-    azieltether version
+    azieltether
     azieltether ui
     azieltether doctor
     azieltether init
     azieltether genesis --payload TEXT
     azieltether append --payload TEXT
-    azieltether verify
-    azieltether show
-    azieltether pulse
-    azieltether peer-sync [--peer URL]
-    azieltether reconcile
-    azieltether dual-chain
-    azieltether tip [--surface worker]
-    azieltether harvest
-    azieltether wires
-    azieltether survival
-    azieltether reheal
-    azieltether shelf [status|seal|pull|sync|usb|usb-import|attest|slot]
     azieltether status
-    azieltether node-id
+    azieltether pulse
 
-Prefer central. Peer when down. Reconcile on restore.
+Advanced commands stay available. Add --json for the machine record.
 Author: Aziel Eliab.
 """
 
@@ -35,6 +23,7 @@ from typing import Sequence
 
 from azieltether import __version__
 from azieltether.errors import AzielTetherError, ChainError, ItemError
+from azieltether.human import HELP, HumanParserMixin, render, render_error, resolve_home, welcome_payload, welcome_text
 from azieltether.lattice import SURFACES, bind_surfaces, mint_tip
 from azieltether.protocol import (
     LIMITATION,
@@ -49,83 +38,119 @@ from azieltether.queues import harvest
 from azieltether.store import Store
 
 
-def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+class HumanParser(HumanParserMixin, argparse.ArgumentParser):
+    """Subcommand parser: plain misuse errors, normal command help."""
+
+
+class RootParser(HumanParser):
+    """Top-level help stays a short command list."""
+
+    def format_help(self) -> str:
+        return (
+            "usage: azieltether [--home HOME] [--json] <command> [options]\n\n"
+            + HELP
+            + "\noptions:\n"
+            + "  -h, --help   show this help message and exit\n"
+            + "  --home HOME  Node home (default ~/.azieltether).\n"
+            + "  --json       Print machine-readable JSON.\n"
+        )
+
+
+def _take_json(argv: list[str]) -> tuple[bool, list[str]]:
+    as_json = False
+    kept: list[str] = []
+    for arg in argv:
+        if arg == "--json":
+            as_json = True
+        else:
+            kept.append(arg)
+    return as_json, kept
+
+
+def _cmd(sub: argparse._SubParsersAction, name: str, description: str) -> argparse.ArgumentParser:
+    return sub.add_parser(
+        name,
+        help=argparse.SUPPRESS,
+        description=description,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+
+def _build_parser() -> RootParser:
+    parser = RootParser(
         prog="azieltether",
-        description=(
-            "AzielTether — central×decentral node-mesh software tether "
-            "(Aziel Eliab). Prefer the Worker when up. Peer-sync when down. "
-            "Reconcile on restore. Dual-chain on same-hash conflict. "
-            "Local UI: `azieltether ui` at http://127.0.0.1:8874."
-        ),
-        epilog=LIMITATION,
+        description=HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--home", default=None, help="Node home (default ~/.azieltether).")
-    sub = parser.add_subparsers(dest="cmd", required=True)
+    parser.add_argument("--json", action="store_true", dest="as_json", help="Print machine-readable JSON.")
+    sub = parser.add_subparsers(
+        dest="cmd",
+        metavar="command",
+        required=False,
+        parser_class=HumanParser,
+    )
 
-    sub.add_parser("version", help="Print package version.")
+    _cmd(sub, "version", "Print the package version.")
 
-    p_ui = sub.add_parser("ui", help="Serve the local UI on 127.0.0.1:8874 (loopback only).")
+    p_ui = _cmd(sub, "ui", "Open the local app on 127.0.0.1:8874.")
     p_ui.add_argument("--host", default="127.0.0.1", help="Loopback host (default 127.0.0.1).")
     p_ui.add_argument("--port", type=int, default=8874, help="Port (default 8874).")
 
-    p_doc = sub.add_parser("doctor", help="Self-check: hash, dual-chain, identity, import.")
+    p_doc = _cmd(sub, "doctor", "Self-check. Pass/fail lines, or --json for the machine record.")
     p_doc.add_argument("--json", action="store_true", dest="as_json", help="Print doctor results as JSON.")
 
-    sub.add_parser("init", help="Create the local node home and node_id.")
-    sub.add_parser("node-id", help="Print this node's id.")
-    sub.add_parser("status", help="Print mode, tips, and chain length.")
+    _cmd(sub, "init", "Create the local node home and node id.")
+    _cmd(sub, "node-id", "Print this node's id.")
+    _cmd(sub, "status", "Show items, chain check, and sync mode.")
 
-    p_gen = sub.add_parser("genesis", help="Write the first item (prev_hash = 64 zeros).")
-    p_gen.add_argument("--payload", required=True, help="Work / evidence body.")
+    p_gen = _cmd(sub, "genesis", 'Write the first item.\n\nExample: azieltether genesis --payload "desk closed"')
+    p_gen.add_argument("--payload", required=True, help="Note to store.")
     p_gen.add_argument("--scope", default="azieltether")
     p_gen.add_argument("--kind", default="work")
     p_gen.add_argument("--timestamp", default=None)
 
-    p_app = sub.add_parser("append", help="Append an item to the local DAG.")
-    p_app.add_argument("--payload", required=True, help="Work / evidence body.")
+    p_app = _cmd(sub, "append", 'Add an item.\n\nExample: azieltether append --payload "your note"')
+    p_app.add_argument("--payload", required=True, help="Note to store.")
     p_app.add_argument("--scope", default="azieltether")
     p_app.add_argument("--kind", default="work")
     p_app.add_argument("--prev", default=None, dest="prev_hash", help="Override prev_hash (default: last item).")
     p_app.add_argument("--timestamp", default=None)
 
-    p_ver = sub.add_parser("verify", help="Walk hashes and prev links. Dual-chain is allowed.")
+    p_ver = _cmd(sub, "verify", "Check hashes and previous-hash links.")
     p_ver.add_argument("--file", default=None, help="Optional JSONL path (default: node queue).")
 
-    sub.add_parser("show", help="Print items in the local queue.")
+    _cmd(sub, "show", "List items in the local queue.")
 
-    p_pulse = sub.add_parser("pulse", help="Prefer-central probe; peer-sync when down.")
+    p_pulse = _cmd(sub, "pulse", "Check the Worker. Sync with peers when it is down.")
     p_pulse.add_argument("--no-probe", action="store_true", help="Do not call the network.")
     p_pulse.add_argument("--host", default=None, help="Override central Worker host.")
 
-    p_peer = sub.add_parser("peer-sync", help="Exchange items with a peer URL.")
+    p_peer = _cmd(sub, "peer-sync", "Exchange items with a peer URL.")
     p_peer.add_argument("--peer", action="append", default=[], help="Peer base URL (repeatable).")
 
-    p_rec = sub.add_parser("reconcile", help="Merge incoming JSON and push to central if up.")
+    p_rec = _cmd(sub, "reconcile", "Merge incoming JSON and push to the Worker if it is up.")
     p_rec.add_argument("--file", default=None, help="JSON file of items to merge.")
     p_rec.add_argument("--no-probe", action="store_true")
     p_rec.add_argument("--host", default=None)
 
-    sub.add_parser("dual-chain", help="Report same-prev_hash forks. No winner.")
+    _cmd(sub, "dual-chain", "Report forks that share a previous hash. Both children are kept.")
 
-    p_tip = sub.add_parser("tip", help="Mint or refresh a lattice tip.")
+    p_tip = _cmd(sub, "tip", "Mint or refresh a lattice tip.")
     p_tip.add_argument("--surface", default="worker", choices=list(SURFACES))
 
-    p_har = sub.add_parser("harvest", help="Copy sibling tether queues (e.g. ~/.az-clce).")
+    p_har = _cmd(sub, "harvest", "Copy sibling tether queues (for example ~/.az-clce).")
     p_har.add_argument("--file", action="append", default=[], help="Extra JSONL queue path.")
 
-    sub.add_parser("wires", help="Print SPLIT THE WIRES + COLD-COPY SURVIVAL + REHEAL law.")
-    sub.add_parser("survival", help="Multiply local cold copies; print survival card.")
-    p_rh = sub.add_parser("reheal", help="Heal from own last good tip; no neighbor vote-to-fix.")
+    _cmd(sub, "wires", "Print the wires, cold-copy, reheal, and shelf law cards.")
+    _cmd(sub, "survival", "Write local cold copies and print the survival card.")
+    p_rh = _cmd(sub, "reheal", "Heal from this node's last good tip. Neighbor votes are refused.")
     p_rh.add_argument("--cite", default=None, help="Trusted-pull cite (must be own last good tip).")
     p_rh.add_argument("--lockset", default=None, help="Sealed lockset hash.")
     p_rh.add_argument("--file", default=None, help="JSON items for a verified trusted pull.")
     p_rh.add_argument("--votes", type=int, default=0, help="Neighbor votes (always refused).")
 
-    p_sh = sub.add_parser(
-        "shelf",
-        help="COLD-SHELF-TETHER: seal / pull / sync / USB. SHA-256 verify. No rewrite key.",
-    )
+    p_sh = _cmd(sub, "shelf", "Cold shelf: status, seal, pull, sync, USB. SHA-256 verify.")
     p_sh.add_argument(
         "action",
         nargs="?",
@@ -140,21 +165,17 @@ def _build_parser() -> argparse.ArgumentParser:
     p_sh.add_argument("--host", default=None, help="Override central Worker host.")
     p_sh.add_argument("--no-probe", action="store_true", help="Do not call the Worker.")
     p_sh.add_argument("--name", default=None, help="MOCK/SLOT name to refuse (ipfs, multihome_dns, …).")
-    p_sh.add_argument(
-        "--zenodo-doi",
-        default=None,
-        help="Refused. Zenodo is IP-banned. Do not invent a DOI.",
-    )
+    p_sh.add_argument("--zenodo-doi", default=None, help="Refused. Do not invent a DOI.")
     p_sh.add_argument(
         "--zenodo-url",
         default=None,
-        help="Refused. Plane B uses Codeberg / archive.org / GitFlic after hash-verify.",
+        help="Refused. Plane B uses Codeberg, archive.org, or GitFlic after a hash check.",
     )
     p_sh.add_argument(
         "--plane-b-url",
         default=None,
         dest="plane_b_url",
-        help="Plane B independent shelf URL (codeberg.org / archive.org / gitflic.ru).",
+        help="Plane B shelf URL (codeberg.org, archive.org, or gitflic.ru).",
     )
     p_sh.add_argument(
         "--lockset-tip",
@@ -175,9 +196,9 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Operator attests after sha256sum -c (usb-import / attest).",
     )
 
-    p_imp = sub.add_parser("import", help="Import a JSON export.")
+    p_imp = _cmd(sub, "import", "Import a JSON export.")
     p_imp.add_argument("file")
-    p_exp = sub.add_parser("export", help="Export the local DAG as JSON.")
+    p_exp = _cmd(sub, "export", "Export the local chain as JSON.")
     p_exp.add_argument("file")
     return parser
 
@@ -186,27 +207,63 @@ def _print_json(obj: object) -> None:
     sys.stdout.write(json.dumps(obj, indent=2, ensure_ascii=False) + "\n")
 
 
+def _emit(payload: dict, *, as_json: bool, cmd: str, shelf_action: str = "status", code: int | None = None) -> int:
+    if as_json:
+        _print_json(payload)
+    else:
+        sys.stdout.write(render(cmd, payload, shelf_action=shelf_action))
+    if code is not None:
+        return code
+    return 0 if payload.get("ok", True) else 1
+
+
+def _fail(exc: BaseException, *, as_json: bool) -> int:
+    message = str(exc)
+    if as_json:
+        _print_json({"ok": False, "error": message, "limitation": LIMITATION})
+    else:
+        sys.stdout.write(render_error(message))
+    return 1
+
+
 def _store(args: argparse.Namespace) -> Store:
     return Store(args.home)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    raw = list(sys.argv[1:] if argv is None else argv)
+    as_json, raw = _take_json(raw)
     parser = _build_parser()
-    args = parser.parse_args(list(argv) if argv is not None else None)
+    args = parser.parse_args(raw)
+    as_json = as_json or bool(getattr(args, "as_json", False))
+
+    if args.cmd is None:
+        home = resolve_home(args.home)
+        if as_json:
+            _print_json(welcome_payload(home))
+        else:
+            sys.stdout.write(welcome_text(home))
+        return 0
 
     if args.cmd == "version":
-        print(f"azieltether {__version__}")
+        if as_json:
+            _print_json({"ok": True, "version": __version__, "product": "azieltether", "author": "Aziel Eliab"})
+        else:
+            print(f"azieltether {__version__}")
         return 0
 
     if args.cmd == "doctor":
         from azieltether.doctor import run_doctor
 
-        return run_doctor(as_json=args.as_json)
+        return run_doctor(as_json=as_json)
 
     if args.cmd == "ui":
         from azieltether.ui import serve
 
-        serve(host=args.host, port=args.port, home=args.home)
+        try:
+            serve(host=args.host, port=args.port, home=args.home)
+        except ValueError as exc:
+            return _fail(exc, as_json=as_json)
         return 0
 
     st = _store(args)
@@ -214,33 +271,38 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.cmd == "init":
             node_id = st.node_id()
-            _print_json({"ok": True, "home": str(st.home), "node_id": node_id, "author": "Aziel Eliab"})
-            return 0
+            return _emit(
+                {"ok": True, "home": str(st.home), "node_id": node_id, "author": "Aziel Eliab"},
+                as_json=as_json,
+                cmd="init",
+            )
 
         if args.cmd == "node-id":
-            print(st.node_id())
+            node_id = st.node_id()
+            if as_json:
+                _print_json({"ok": True, "node_id": node_id, "author": "Aziel Eliab"})
+            else:
+                print(node_id)
             return 0
 
         if args.cmd == "status":
             chain = st.chain()
             result = chain.verify()
-            _print_json(
-                {
-                    "ok": result.ok,
-                    "home": str(st.home),
-                    "node_id": st.node_id(),
-                    "items": result.items,
-                    "tip_hashes": list(result.tip_hashes),
-                    "dual_chain": [
-                        {"prev_hash": f.prev_hash, "child_hashes": list(f.child_hashes)}
-                        for f in result.dual_chain
-                    ],
-                    "mode": st.state().get("mode"),
-                    "limitation": LIMITATION,
-                    "author": "Aziel Eliab",
-                }
-            )
-            return 0 if result.ok else 1
+            payload = {
+                "ok": result.ok,
+                "home": str(st.home),
+                "node_id": st.node_id(),
+                "items": result.items,
+                "tip_hashes": list(result.tip_hashes),
+                "dual_chain": [
+                    {"prev_hash": f.prev_hash, "child_hashes": list(f.child_hashes)}
+                    for f in result.dual_chain
+                ],
+                "mode": st.state().get("mode"),
+                "limitation": LIMITATION,
+                "author": "Aziel Eliab",
+            }
+            return _emit(payload, as_json=as_json, cmd="status", code=0 if result.ok else 1)
 
         if args.cmd == "genesis":
             from azieltether.chain import Chain
@@ -253,8 +315,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                 scope=args.scope,
                 created_at=args.timestamp,
             )
-            _print_json({"ok": True, "action": "genesis", "item": chain[0].as_dict()})
-            return 0
+            return _emit(
+                {"ok": True, "action": "genesis", "item": chain[0].as_dict()},
+                as_json=as_json,
+                cmd="genesis",
+            )
 
         if args.cmd == "append":
             chain = st.chain()
@@ -268,38 +333,41 @@ def main(argv: Sequence[str] | None = None) -> int:
                 prev_hash=args.prev_hash,
                 created_at=args.timestamp,
             )
-            _print_json({"ok": True, "action": "appended", "item": item.as_dict()})
-            return 0
+            return _emit(
+                {"ok": True, "action": "appended", "item": item.as_dict()},
+                as_json=as_json,
+                cmd="append",
+            )
 
         if args.cmd == "verify":
             from azieltether.chain import Chain
 
             chain = Chain.load(args.file) if args.file else st.chain()
             result = chain.verify()
-            _print_json(
-                {
-                    "ok": result.ok,
-                    "items": result.items,
-                    "errors": list(result.errors),
-                    "first_hash": result.first_hash,
-                    "last_hash": result.last_hash,
-                    "tip_hashes": list(result.tip_hashes),
-                    "dual_chain": [
-                        {"prev_hash": f.prev_hash, "child_hashes": list(f.child_hashes)}
-                        for f in result.dual_chain
-                    ],
-                    "author": "Aziel Eliab",
-                }
-            )
-            return 0 if result.ok else 1
+            payload = {
+                "ok": result.ok,
+                "items": result.items,
+                "errors": list(result.errors),
+                "first_hash": result.first_hash,
+                "last_hash": result.last_hash,
+                "tip_hashes": list(result.tip_hashes),
+                "dual_chain": [
+                    {"prev_hash": f.prev_hash, "child_hashes": list(f.child_hashes)}
+                    for f in result.dual_chain
+                ],
+                "author": "Aziel Eliab",
+            }
+            return _emit(payload, as_json=as_json, cmd="verify", code=0 if result.ok else 1)
 
         if args.cmd == "show":
-            _print_json({"items": [i.as_dict() for i in st.chain().items], "author": "Aziel Eliab"})
-            return 0
+            return _emit(
+                {"items": [i.as_dict() for i in st.chain().items], "author": "Aziel Eliab"},
+                as_json=as_json,
+                cmd="show",
+            )
 
         if args.cmd == "pulse":
-            _print_json(pulse(st, probe=not args.no_probe, host=args.host))
-            return 0
+            return _emit(pulse(st, probe=not args.no_probe, host=args.host), as_json=as_json, cmd="pulse")
 
         if args.cmd == "peer-sync":
             for url in args.peer:
@@ -307,8 +375,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             rec = pulse(st, probe=False, harvest_siblings=False)
             rec["mode"] = "peer-sync-when-down"
             rec["peers_configured"] = st.peers()
-            _print_json(rec)
-            return 0
+            return _emit(rec, as_json=as_json, cmd="peer-sync")
 
         if args.cmd == "reconcile":
             incoming = []
@@ -318,49 +385,52 @@ def main(argv: Sequence[str] | None = None) -> int:
                     incoming = doc
                 elif isinstance(doc, dict):
                     incoming = doc.get("items") or doc.get("chain") or []
-            _print_json(reconcile(st, incoming=incoming, host=args.host, probe=not args.no_probe))
-            return 0
+            return _emit(
+                reconcile(st, incoming=incoming, host=args.host, probe=not args.no_probe),
+                as_json=as_json,
+                cmd="reconcile",
+            )
 
         if args.cmd == "dual-chain":
-            _print_json(dual_chain_report(st))
-            return 0
+            return _emit(dual_chain_report(st), as_json=as_json, cmd="dual-chain")
 
         if args.cmd == "tip":
             chain = st.chain()
-            if args.surface == "worker" or True:
-                tips = bind_surfaces(chain, node_id=st.node_id())
-                st.write_tips(tips)
-                chosen = tips["surfaces"].get(args.surface) or mint_tip(
-                    surface=args.surface,
-                    tip_hash=chain.last_hash(),
-                    node_id=st.node_id(),
-                ).as_dict()
-            _print_json({"ok": True, "tip": chosen, "surfaces": list(tips["surfaces"])})
-            return 0
+            tips = bind_surfaces(chain, node_id=st.node_id())
+            st.write_tips(tips)
+            chosen = tips["surfaces"].get(args.surface) or mint_tip(
+                surface=args.surface,
+                tip_hash=chain.last_hash(),
+                node_id=st.node_id(),
+            ).as_dict()
+            return _emit(
+                {"ok": True, "tip": chosen, "surfaces": list(tips["surfaces"])},
+                as_json=as_json,
+                cmd="tip",
+            )
 
         if args.cmd == "harvest":
             extra = [Path(p) for p in args.file]
-            _print_json(harvest(st.chain(), extra=extra))
-            return 0
+            return _emit(harvest(st.chain(), extra=extra), as_json=as_json, cmd="harvest")
 
         if args.cmd == "wires":
-            _print_json(wires_report())
-            return 0
+            return _emit(wires_report(), as_json=as_json, cmd="wires")
 
         if args.cmd == "survival":
             from azieltether.survival import copy_manifest, law_card
 
             copies = st.multiply_copies()
-            _print_json(
+            return _emit(
                 {
                     "ok": True,
                     "author": "Aziel Eliab",
                     "survival": law_card(),
                     "multiply": copies,
                     "manifest": copy_manifest(st.copies_dir),
-                }
+                },
+                as_json=as_json,
+                cmd="survival",
             )
-            return 0
 
         if args.cmd == "reheal":
             incoming = []
@@ -370,24 +440,30 @@ def main(argv: Sequence[str] | None = None) -> int:
                     incoming = doc
                 elif isinstance(doc, dict):
                     incoming = doc.get("items") or []
-            _print_json(
+            return _emit(
                 reheal(
                     st,
                     cite=args.cite,
                     lockset=args.lockset,
                     incoming=incoming,
                     votes_for=args.votes,
-                )
+                ),
+                as_json=as_json,
+                cmd="reheal",
             )
-            return 0
 
         if args.cmd == "shelf":
             from azieltether.shelf import (
+                attest_usb,
                 export_usb,
                 fetch_manifest,
                 import_usb,
                 law_card,
                 load_last_shelf,
+                merge_verified_items,
+                plane_a_card,
+                plane_b_status,
+                plane_c_card,
                 refuse_slot,
                 seal_shelf,
             )
@@ -395,11 +471,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             action = args.action
             if action == "slot":
                 rec = refuse_slot(args.name or "ipfs")
-                _print_json(rec)
-                return 0 if rec.get("ok") else 1
+                return _emit(rec, as_json=as_json, cmd="shelf", shelf_action=action, code=0 if rec.get("ok") else 1)
             if action == "status":
-                from azieltether.shelf import plane_a_card, plane_b_status, plane_c_card
-
                 if args.plane_b_url:
                     st.set_plane_b(url=args.plane_b_url, sha256=args.sha256, verified=False)
                 last = load_last_shelf(st)
@@ -407,7 +480,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 stored_url = stored.get("url") or None
                 if stored_url and "zenodo" in str(stored_url).lower():
                     stored_url = None
-                _print_json(
+                return _emit(
                     {
                         "ok": True,
                         "author": "Aziel Eliab",
@@ -424,26 +497,30 @@ def main(argv: Sequence[str] | None = None) -> int:
                         },
                         "last": {k: v for k, v in last.items() if k != "manifest"} if last.get("ok") else last,
                         "manifest": (last.get("manifest") if last.get("ok") else None),
-                    }
+                    },
+                    as_json=as_json,
+                    cmd="shelf",
+                    shelf_action="status",
                 )
-                return 0
             if action == "seal":
-                _print_json(seal_shelf(st))
-                return 0
+                return _emit(seal_shelf(st), as_json=as_json, cmd="shelf", shelf_action="seal")
             if action == "pull":
                 if not args.url:
-                    _print_json({"ok": False, "error": "shelf pull needs --url", "limitation": LIMITATION})
-                    return 1
+                    return _emit(
+                        {"ok": False, "error": "shelf pull needs --url", "limitation": LIMITATION},
+                        as_json=as_json,
+                        cmd="shelf",
+                        shelf_action="pull",
+                        code=1,
+                    )
                 for url in args.url:
                     st.add_shelf_url(url)
                 rec = fetch_manifest(args.url[0], expected_sha256=args.sha256)
                 if rec.get("ok") and rec.get("manifest", {}).get("items"):
-                    from azieltether.shelf import merge_verified_items
-
                     rec["merge"] = merge_verified_items(st, rec["manifest"]["items"])
                     rec["seal"] = seal_shelf(st)
-                _print_json({k: v for k, v in rec.items() if k != "bytes"})
-                return 0 if rec.get("ok") else 1
+                shown = {k: v for k, v in rec.items() if k != "bytes"}
+                return _emit(shown, as_json=as_json, cmd="shelf", shelf_action="pull", code=0 if rec.get("ok") else 1)
             if action == "sync":
                 for url in args.url:
                     st.add_shelf_url(url)
@@ -462,31 +539,36 @@ def main(argv: Sequence[str] | None = None) -> int:
                     probe=not args.no_probe,
                     incoming=incoming or None,
                 )
-                _print_json(rec)
-                return 0 if rec.get("ok") else 1
+                return _emit(rec, as_json=as_json, cmd="shelf", shelf_action="sync", code=0 if rec.get("ok") else 1)
             if action == "usb":
                 dest = args.dest or str(st.home / "usb-shelf")
-                _print_json(export_usb(st, dest))
-                return 0
+                return _emit(export_usb(st, dest), as_json=as_json, cmd="shelf", shelf_action="usb")
             if action == "usb-import":
                 if not args.src:
-                    _print_json({"ok": False, "error": "shelf usb-import needs --src", "limitation": LIMITATION})
-                    return 1
+                    return _emit(
+                        {"ok": False, "error": "shelf usb-import needs --src", "limitation": LIMITATION},
+                        as_json=as_json,
+                        cmd="shelf",
+                        shelf_action="usb-import",
+                        code=1,
+                    )
                 rec = import_usb(
                     st,
                     args.src,
                     expected_sha256=args.sha256,
                     operator_attest=bool(args.operator_attest),
                 )
-                _print_json(rec)
-                return 0 if rec.get("ok") else 1
+                return _emit(rec, as_json=as_json, cmd="shelf", shelf_action="usb-import", code=0 if rec.get("ok") else 1)
             if action == "attest":
-                from azieltether.shelf import attest_usb
-
                 src = args.src or args.dest
                 if not src:
-                    _print_json({"ok": False, "error": "shelf attest needs --src", "limitation": LIMITATION})
-                    return 1
+                    return _emit(
+                        {"ok": False, "error": "shelf attest needs --src", "limitation": LIMITATION},
+                        as_json=as_json,
+                        cmd="shelf",
+                        shelf_action="attest",
+                        code=1,
+                    )
                 rec = attest_usb(
                     st,
                     src,
@@ -494,23 +576,19 @@ def main(argv: Sequence[str] | None = None) -> int:
                     pack_sha256=args.pack_sha256,
                     lockset_tip=args.lockset_tip,
                 )
-                _print_json(rec)
-                return 0 if rec.get("ok") else 1
+                return _emit(rec, as_json=as_json, cmd="shelf", shelf_action="attest", code=0 if rec.get("ok") else 1)
 
         if args.cmd == "import":
             from azieltether.jsonio import import_json
 
-            _print_json(import_json(args.file, store=st))
-            return 0
+            return _emit(import_json(args.file, store=st), as_json=as_json, cmd="import")
 
         if args.cmd == "export":
             from azieltether.jsonio import export_json
 
-            _print_json(export_json(args.file, store=st))
-            return 0
+            return _emit(export_json(args.file, store=st), as_json=as_json, cmd="export")
     except (AzielTetherError, ItemError, ChainError, OSError, ValueError, json.JSONDecodeError) as exc:
-        _print_json({"ok": False, "error": str(exc), "limitation": LIMITATION})
-        return 1
+        return _fail(exc, as_json=as_json)
 
     parser.error(f"unknown command {args.cmd}")
     return 2

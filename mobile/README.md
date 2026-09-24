@@ -1,10 +1,9 @@
 # AzielTether — iPhone & Android
 
-Prefer-central / peer-sync / reconcile a hash-chained tether on device.
-Dual-chain keeps both children of the same prev_hash. Lattice tips are
-receipts, not a mesh on godlock.uk.
+A hash-chained tether on this phone. Offline. No analytics.
+Light and dark follow the system. Gold focus.
 
-Offline. No analytics. Dark matte / gold.
+Author: Aziel Eliab.
 
 Application id: `com.azieeliab.azieltether`
 
@@ -23,9 +22,9 @@ flutter run
 Then open `android/` in Android Studio, or `ios/Runner.xcworkspace` in
 Xcode.
 
-## Honest scope
+## Notes
 
-Software tether, not a VPN. Public boards stay mesh-free.
+The phone app keeps the chain on the device. The desktop package is separate.
 
 ## Desktop package (counted download)
 
