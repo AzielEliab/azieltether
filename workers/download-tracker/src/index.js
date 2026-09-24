@@ -37,8 +37,6 @@ const GITHUB_RELEASES = "https://github.com/AzielEliab/azieltether/releases";
 const GITHUB_LATEST = "https://github.com/AzielEliab/azieltether/releases/latest";
 const GITHUB_REPO = "https://github.com/AzielEliab/azieltether";
 const INSTALL_LINE = "curl -fsSL https://azieltether-download-tracker.vibelock.workers.dev/install.sh | bash";
-const LIMITATION =
-  "THIS IS: a central×decentral node-mesh software tether. Prefer the Worker when up. Peer-sync hash-chained work when down. Reconcile on restore. Dual-chain on same-hash conflict. Lattice tips survive across GodLock, Aziel Digital Library, and product Workers. THIS IS NOT: a VPN, MirageGrid, a kernel, a truth score, a backdoor, or a mesh on godlock.uk. Public HTTPS boards stay mesh-free. The tether lives in the downloaded software. Author Aziel Eliab.";
 
 function corsHeaders() {
   return {
@@ -434,53 +432,142 @@ async function indexHtml(env) {
 </script>
 <!-- gitbaby-seo -->
 <style>
-  :root { color-scheme: dark; }
-  body { font: 16px/1.45 system-ui, sans-serif; max-width: 42rem; margin: 3rem auto; padding: 0 1.25rem 4rem; background: #0e1014; color: #e8eaef; }
-  h1 { font-size: 1.75rem; margin: 0 0 .35rem; }
-  .motto { color: #9aa3b2; margin: 0 0 1.5rem; }
-  .card { border: 1px solid #2a3140; border-radius: 12px; padding: 1.25rem 1.35rem; background: #151922; }
-  .nums { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; margin: 0 0 1rem; }
-  .count { font-size: 2.2rem; font-variant-numeric: tabular-nums; font-weight: 700; margin: 0; }
-  .count span { display: block; font-size: .95rem; font-weight: 500; color: #9aa3b2; }
-  .kid { font-size: 1.05rem; margin: 0 0 1rem; }
-  .btns { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin: 0 0 .85rem; }
-  @media (max-width: 520px) { .btns { grid-template-columns: 1fr; } }
-  a.btn, button.btn { display: block; width: 100%; box-sizing: border-box; text-align: center; font: inherit; font-size: 1.2rem; font-weight: 750; padding: 1rem 1.1rem; border-radius: 10px; border: 0; cursor: pointer; text-decoration: none; }
-  a.btn.primary { background: #e8eaef; color: #0e1014; }
-  button.btn.install { background: #c9a227; color: #14110a; }
-  button.btn.install.copied { background: #7dcf9a; color: #0e1014; }
-  .meta { margin-top: 1.1rem; color: #9aa3b2; font-size: .92rem; }
-  .meta a { color: #c9d4ff; }
-  .iso { margin-top: .85rem; font-size: .85rem; color: #7d8696; }
-  .banner { border: 1px solid #5c4a1a; background: #241c0d; color: #f0d78c; padding: .85rem 1rem; border-radius: 8px; margin: 0 0 1.2rem; font-size: .92rem; }
-  pre { background: #0e1014; padding: .75rem .9rem; overflow: auto; border-radius: 8px; font-size: .82rem; }
-  code { font-size: .88rem; }
-  .cite { margin-top: 1.4rem; padding-top: 1rem; border-top: 1px solid #2a3140; }
-  .cite h2 { font-size: 1.05rem; margin: 0 0 .4rem; }
-  .cite p { color: #c5ccd8; font-size: .95rem; }
-  .cite a { color: #c9d4ff; }
-  #meshStrip { border: 1px solid #c9a227; border-radius: 12px; padding: .85rem 1rem; background: #151922; margin: 0 0 1.2rem; display: flex; flex-wrap: wrap; align-items: center; gap: .7rem 1rem; font-size: .88rem; color: #9aa3b2; }
-  #meshStrip .live { color: #e8eaef; }
-  #meshStrip .live b { color: #c9a227; font-size: 1.35rem; margin-right: .35rem; }
-  #meshStrip .rollup b { color: #c9a227; }
-  #meshStrip button { font: 700 .78rem/1 ui-monospace, Menlo, Consolas, monospace; height: 2rem; padding: 0 .75rem; border-radius: 8px; background: #101010; color: #e8eaef; border: 1px solid #c9a227; cursor: pointer; }
-  #meshStrip button:hover { background: #241c0d; color: #c9a227; }
-  #meshStrip input { width: 10rem; padding: .4rem .55rem; border: 1px solid #c9a227; border-radius: 8px; background: #0e0e0e; color: #e8eaef; font: inherit; }
-  #meshProducts { flex-basis: 100%; margin: 0; }
+  :root {
+    color-scheme: dark;
+    --bg: #0e1014;
+    --ink: #f4f6fb;
+    --muted: #c5cedd;
+    --gold: #e7c56a;
+    --panel: #151922;
+    --line: #3a4456;
+    --btn: #f4f6fb;
+    --btn-ink: #12141a;
+    --focus: #ffe7a3;
+    --field: #0e1014;
+    --ghost: #c5cedd;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      color-scheme: light;
+      --bg: #f7f8fb;
+      --ink: #141820;
+      --muted: #3e4858;
+      --gold: #6b4e08;
+      --panel: #ffffff;
+      --line: #6d788a;
+      --btn: #141820;
+      --btn-ink: #f7f8fb;
+      --focus: #5a3d00;
+      --field: #ffffff;
+      --ghost: #3e4858;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  body { font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  img { max-width: 100%; height: auto; }
+  a { color: var(--gold); }
+  a:focus-visible, button:focus-visible, input:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 3px;
+  }
+  .skip {
+    position: absolute; left: 0.75rem; top: 0.75rem; transform: translateY(-160%);
+    background: var(--btn); color: var(--btn-ink); padding: 0.55rem 0.8rem;
+    border-radius: 10px; z-index: 5; text-decoration: none; font-weight: 750;
+  }
+  .skip:focus, .skip:focus-visible { transform: none; }
+  .wrap { max-width: 40rem; margin: 0 auto; padding: 1.15rem 1rem 2.5rem; }
+  .wrap, main, header, section, p, pre, ul, li { min-width: 0; max-width: 100%; }
   .brandrow { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; }
   .brandmark { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; flex: 0 0 auto; box-shadow: 0 0 0 1px #d4af3733; }
+  h1 { font-size: clamp(2rem, 8vw, 2.6rem); line-height: 1.05; letter-spacing: -0.03em; margin: 0 0 0.35rem; }
+  h2 { font-size: 1.05rem; margin: 0 0 0.55rem; }
+  .motto { margin: 0 0 0.45rem; font-size: 1.12rem; color: var(--gold); }
+  .lede, .asset-note, .meta, .iso, footer, .cite p { color: var(--muted); }
+  .lede { margin: 0 0 1rem; }
+  a.btn.primary {
+    display: block; width: 100%; margin: 0 0 0.55rem; padding: 1.05rem 1.2rem;
+    min-height: 3.4rem; border: 0; border-radius: 12px; background: var(--btn); color: var(--btn-ink);
+    text-align: center; text-decoration: none; font: 760 1.25rem/1.1 system-ui, sans-serif; cursor: pointer;
+  }
+  a.btn.primary:hover { filter: brightness(1.06); }
+  .asset-note { margin: 0 0 0.85rem; font-size: 0.92rem; }
+  button.btn.ghost {
+    display: block; width: 100%; margin: 0 0 0.65rem; min-height: 44px; padding: 0.7rem 1rem;
+    background: transparent; color: var(--ink); border: 1px solid var(--line); border-radius: 12px;
+    font: 650 1rem/1.2 system-ui, sans-serif; cursor: pointer;
+  }
+  button.btn.copied { background: #146c43; color: #f3fff7; border-color: transparent; }
+  pre, code { font-family: ui-monospace, Menlo, Consolas, monospace; }
+  pre {
+    background: var(--field); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 12px; padding: 0.75rem 0.85rem; margin: 0 0 0.75rem;
+    font-size: 0.82rem; white-space: pre-wrap; overflow-wrap: anywhere;
+  }
+  code { font-size: 0.92em; overflow-wrap: anywhere; }
+  .features { list-style: none; padding: 0; margin: 0.35rem 0 0; display: grid; gap: 0.55rem; }
+  .features li { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 0.75rem 0.9rem; }
+  .card, .cite { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 1rem 1rem 1.1rem; margin: 1.15rem 0 0; }
+  .nums { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin: 0 0 0.8rem; }
+  .count { font-size: 1.8rem; font-variant-numeric: tabular-nums; font-weight: 700; margin: 0; }
+  .count span { display: block; font-size: 0.92rem; font-weight: 500; color: var(--muted); }
+  .meta, .iso { font-size: 0.92rem; margin: 0.55rem 0 0; }
+  .card ul { margin: 0.35rem 0 0; padding-left: 1.1rem; color: var(--muted); }
+  .card li { margin: 0.25rem 0; overflow-wrap: anywhere; }
+  #meshStrip {
+    border: 1px solid var(--line); border-radius: 14px; padding: 0.85rem 0.9rem;
+    background: var(--panel); margin: 1.25rem 0 0; display: flex; flex-wrap: wrap;
+    align-items: center; gap: 0.55rem 0.75rem; font-size: 0.9rem; color: var(--muted);
+  }
+  #meshStrip .live { color: var(--ink); }
+  #meshStrip .live b, #meshStrip .rollup b { color: var(--gold); }
+  #meshStrip .live b { font-size: 1.35rem; margin-right: 0.3rem; }
+  #meshStrip button {
+    font: 650 0.82rem/1 system-ui, sans-serif; min-height: 44px; padding: 0.35rem 0.7rem;
+    background: transparent; color: var(--ink); border: 1px solid var(--line); border-radius: 10px; cursor: pointer;
+  }
+  #meshStrip button:hover { border-color: var(--gold); color: var(--gold); }
+  #meshStrip input {
+    width: min(100%, 16rem); min-height: 44px; padding: 0.45rem 0.6rem;
+    border: 1px solid var(--line); border-radius: 10px; background: var(--field); color: var(--ink); font: inherit;
+  }
+  .mesh-actions { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; width: 100%; }
+  #meshProducts { flex-basis: 100%; margin: 0; overflow-wrap: anywhere; }
+  footer { margin-top: 1.5rem; font-size: 0.9rem; }
+  footer p { margin: 0.3rem 0; }
+  footer a { color: var(--ink); }
+  @media (min-width: 720px) {
+    .wrap { padding: 2rem 1.25rem 3rem; }
+    .features { grid-template-columns: 1fr 1fr 1fr; }
+  }
 </style>
 <body>
-  <div class="brandrow"><img class="brandmark" src="/sigil.png" width="40" height="40" alt="" decoding="async"></div>
-  <h1>AzielTether</h1>
-  <p class="motto">Prefer central. Peer when down. Reconcile on restore. Author Aziel Eliab.</p>
-  <p class="banner">${LIMITATION}</p>
+<a class="skip" href="#main">Skip to content</a>
+<div class="wrap">
+<main id="main">
+  <header class="hero">
+    <div class="brandrow"><img class="brandmark" src="/sigil.png" width="40" height="40" alt="" decoding="async"></div>
+    <h1>AzielTether</h1>
+    <p class="motto">Prefer central. Peer when down. Reconcile on restore.</p>
+    <p class="lede">A software tether by Aziel Eliab. Work stays with the Worker while it is up. Peers sync hash-chained work while it is down. On restore, the chains reconcile.</p>
+    <a class="btn primary dl" id="download" href="/download?asset=${DEFAULT_ASSET}" aria-describedby="downloadNote">Download</a>
+    <p class="asset-note" id="downloadNote">${DEFAULT_ASSET} · one package for macOS, Linux, and Windows · ${n} counted downloads</p>
+    <button type="button" class="btn ghost" id="install-btn">One-click install</button>
+    <pre id="install-cmd">${INSTALL_LINE}</pre>
+    <p class="lede">After install, run <code>azieltether ui</code> and open http://127.0.0.1:8874 on this computer.</p>
+    <ul class="features">
+      <li>Prefer the Worker when it is up.</li>
+      <li>Peers sync hash-chained work when it is down.</li>
+      <li>If two peers extend the same hash, both chains stay.</li>
+    </ul>
+  </header>
   <div id="meshStrip" aria-label="Suite Live Nodes">
     <div class="live"><b id="meshLiveCount">0</b> Live Nodes</div>
     <div id="meshLine">Suite mesh: off (default). QNM-BUILD-1.0. QNS-CD-1.0. Not an anonymity network.</div>
     <div class="rollup">live <b id="qnmLive">0</b> · locked <b id="qnmLocked">0</b> · isolated <b id="qnmIsolated">0</b></div>
     <div>No Node Gate · No auto-heal · Aziel Eliab only</div>
-    <div>
+    <div class="mesh-actions">
       <input id="meshBearer" type="text" maxlength="80" placeholder="bearer (required to enable)" aria-label="mesh bearer">
       <button id="meshEnable" type="button" title="Enable suite mesh. Declared bearer required. Default off.">Enable</button>
       <button id="meshDisable" type="button" title="Disable suite mesh (always allowed)">Disable</button>
@@ -489,24 +576,30 @@ async function indexHtml(env) {
     </div>
     <p id="meshProducts">Catalog MCP mesh_* · FragGate slug=mesh · /v1/mesh/* PROXY · QNS-CD-1.0 cross-map · SPLIT-THE-WIRES-1.0 · COLD-COPY-SURVIVAL-1.0 · REHEAL-1.0 · COLD-SHELF-TETHER-1.0 · not AnonBroadcast · not AZMail ring · not a Node Gate · no public qnsd proxy</p>
   </div>
-  <div class="card">
+  <section class="card" id="counts">
+    <h2>Counted downloads</h2>
     <div class="nums">
       <p class="count">${v}<span>Views</span></p>
       <p class="count">${n}<span>Downloads</span></p>
     </div>
-    <p class="kid"><strong>Two big buttons.</strong> Download saves the gzip (the Downloads number goes up). One-click install copies a Terminal command. After it finishes, type <code>azieltether ui</code>.</p>
-    <div class="btns">
-      <a class="btn primary dl" href="/download?asset=${DEFAULT_ASSET}">Download</a>
-      <button type="button" class="btn install" id="install-btn">One-click install</button>
-    </div>
-    <pre id="install-cmd">${INSTALL_LINE}</pre>
-    <p class="kid">Then run: <code>azieltether ui</code> and open http://127.0.0.1:8874 (this computer only).</p>
-    <p class="meta">The download count ticks on the Download click. The Worker serves the gzip (HTTP 200). No 302 to GitHub. Forks using this same link are counted automatically. ${DEFAULT_ASSET} — ${n} counted.</p>
-    <p class="iso">Isolated counter: Worker <code>azieltether-download-tracker</code>, project <code>${PROJECT}</code>, KV <code>AZIELTETHER_DOWNLOADS</code>. Not mixed with any other product. /v1 does not increment downloads.</p>
+    <p class="meta">The download count ticks on the Download click. The Worker serves the gzip (HTTP 200). Forks and branches that use this same link are counted. /v1 does not increment downloads. ${DEFAULT_ASSET} — ${n} counted.</p>
+    <p class="iso">Isolated counter: Worker <code>azieltether-download-tracker</code>, project <code>${PROJECT}</code>, KV <code>AZIELTETHER_DOWNLOADS</code>.</p>
     <p class="meta">GitHub: stars ${gh.stars || 0} · forks ${gh.forks || 0} · watchers ${gh.watchers || 0} · release assets ${gh.release_download_count || 0}</p>
-    <p class="meta">Apache-2.0 · Eliab, Aziel · <a href="${GITHUB_REPO}">GitHub</a></p>
-    <p class="meta"><a href="/stats">JSON stats</a> · <a href="/openapi.json">OpenAPI</a> · <a href="/v1/mesh">/v1/mesh</a> · <a href="/v1/skill">Skill</a> · <a href="/v1/example">Example</a> · <a href="/ai">AI runtime</a> · <a href="/llms.txt">llms.txt</a> · <a href="${GITHUB_LATEST}">releases</a></p>
-    <script>
+    <h2>Per repo / branch / fork</h2>
+    <ul>${breakdown}</ul>
+  </section>
+  <section class="cite" id="cite">
+    <h2>How to cite</h2>
+    <p>Aziel Eliab. AzielTether. https://github.com/AzielEliab/azieltether. ${HOST}.</p>
+  </section>
+</main>
+<footer>
+  <p>Aziel Eliab · AzielTether · Apache-2.0 · forks welcome</p>
+  <p><a href="https://aziel-runtime.vibelock.workers.dev/">Catalog</a> · <a href="${GITHUB_REPO}">GitHub</a> · <a href="${HOST}/download">Download</a> · <a href="${HOST}/cite.json">cite.json</a></p>
+  <p><a href="/stats">JSON stats</a> · <a href="/openapi.json">OpenAPI</a> · <a href="/mcp">MCP</a> · <a href="/v1/mesh">/v1/mesh</a> · <a href="/v1/skill">Skill</a> · <a href="/v1/example">Example</a> · <a href="/ai">AI runtime</a> · <a href="/llms.txt">llms.txt</a> · <a href="${GITHUB_LATEST}">releases</a></p>
+</footer>
+</div>
+<script>
       (function () {
         var cmd = "curl -fsSL https://azieltether-download-tracker.vibelock.workers.dev/install.sh | bash";
         var btn = document.getElementById("install-btn");
@@ -631,15 +724,7 @@ async function indexHtml(env) {
         setInterval(refreshMesh, 30000);
         document.addEventListener("visibilitychange", function () { if (!document.hidden) refreshMesh(); });
       })();
-    </script>
-    <h2>Per repo / branch / fork</h2>
-    <ul>${breakdown}</ul>
-  </div>
-<section class="cite" id="cite">
-  <h2>How to cite</h2>
-  <p>Aziel Eliab. AzielTether. https://github.com/AzielEliab/azieltether. ${HOST}.</p>
-  <p><a href="https://aziel-runtime.vibelock.workers.dev/">Catalog</a> · <a href="${GITHUB_REPO}">GitHub</a> · <a href="${HOST}/download">Download</a> · <a href="${HOST}/cite.json">cite.json</a></p>
-</section>
+</script>
 <!-- /gitbaby-seo -->
 </body>
 </html>`;
