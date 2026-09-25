@@ -19,7 +19,9 @@ class AzielTetherApp extends StatelessWidget {
     return MaterialApp(
       title: 'AzielTether',
       debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(),
+      theme: buildLightTheme(),
+      darkTheme: buildDarkTheme(),
+      themeMode: ThemeMode.system,
       home: const TetherPage(),
     );
   }
@@ -54,7 +56,7 @@ class TetherPage extends StatefulWidget {
 class _TetherPageState extends State<TetherPage> {
   final _payload = TextEditingController();
   final _chain = <TetherItem>[];
-  String _status = 'prefer-central (local). no chain yet';
+  String _status = 'No items yet. Write a note, then start the chain.';
 
   @override
   void dispose() {
@@ -67,15 +69,15 @@ class _TetherPageState extends State<TetherPage> {
   void _mint({required bool genesis}) {
     final payload = _payload.text;
     if (payload.trim().isEmpty) {
-      setState(() => _status = 'payload is required');
+      setState(() => _status = 'Write a note first.');
       return;
     }
     if (genesis && _chain.isNotEmpty) {
-      setState(() => _status = 'genesis refused: chain already exists (append only)');
+      setState(() => _status = 'This chain already started. Add a note instead.');
       return;
     }
     if (!genesis && _chain.isEmpty) {
-      setState(() => _status = 'append refused: run genesis first');
+      setState(() => _status = 'Start the chain before adding another note.');
       return;
     }
     final ts = _now();
@@ -105,7 +107,8 @@ class _TetherPageState extends State<TetherPage> {
       byPrev.putIfAbsent(item.prevHash, () => []).add(item.hash);
     }
     final forks = byPrev.values.where((c) => c.toSet().length > 1).length;
-    return 'OK  ${_chain.length} item(s). dual-chain forks=$forks. no winner.';
+    if (forks == 0) return 'Chain checks out. ${_chain.length} item(s).';
+    return 'Chain checks out. ${_chain.length} item(s). Forks: $forks. Both children are kept.';
   }
 
   @override
@@ -115,36 +118,41 @@ class _TetherPageState extends State<TetherPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text(
-            'Prefer central. Peer when down. Reconcile on restore.',
-            style: TextStyle(color: kGold, fontStyle: FontStyle.italic, fontSize: 16),
+          Text(
+            'Keeps a hash-chained copy of your work on this phone.',
+            style: Theme.of(context).textTheme.bodyLarge,
           ),
           const SizedBox(height: 8),
           const Text(
-            'On-device software tether. Dual-chain keeps both children of '
-            'the same prev_hash. Not a VPN. Public boards stay mesh-free.',
+            'Prefer central. Peer when down. Reconcile on restore.',
+            style: TextStyle(fontStyle: FontStyle.italic),
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _payload,
             maxLines: 3,
-            decoration: const InputDecoration(labelText: 'Payload (required)', alignLabelWithHint: true),
+            decoration: const InputDecoration(labelText: 'Note', alignLabelWithHint: true),
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          FilledButton(
+            onPressed: () => _mint(genesis: _chain.isEmpty),
+            child: Text(_chain.isEmpty ? 'Start chain' : 'Add note'),
+          ),
+          const SizedBox(height: 8),
+          ExpansionTile(
+            title: const Text('Advanced'),
             children: [
-              FilledButton(onPressed: () => _mint(genesis: true), child: const Text('Genesis')),
-              FilledButton(onPressed: () => _mint(genesis: false), child: const Text('Append')),
-              OutlinedButton(
-                onPressed: () => setState(() => _status = _runVerify()),
-                child: const Text('Verify'),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton(
+                  onPressed: () => setState(() => _status = _runVerify()),
+                  child: const Text('Check chain'),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          Text(_status, style: const TextStyle(color: kGold)),
+          Text(_status),
           const SizedBox(height: 16),
           for (var i = 0; i < _chain.length; i++)
             Card(

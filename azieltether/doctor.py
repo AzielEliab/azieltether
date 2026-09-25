@@ -254,4 +254,5 @@ def run_doctor(*, as_json: bool = False) -> int:
         print(json.dumps(payload, indent=2))
     else:
         print("doctor", "passed" if failed == 0 else "failed")
+        print("Next: azieltether ui" if failed == 0 else "Next: azieltether doctor")
     return 0 if failed == 0 else 1

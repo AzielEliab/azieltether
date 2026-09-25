@@ -1,61 +1,37 @@
 # AzielTether
 
-Central × decentral node-mesh **software tether** by **Aziel Eliab**.
-
-Prefer the central Worker when it is up. When it is down, downloaded nodes
-sync hash-chained work with each other when they hit the internet, then
-reconcile back to central on restore. Dual-chain on same-hash conflict.
-Hash lattice tips survive across GodLock, Aziel Digital Library, and
-product Workers.
+AzielTether keeps a hash-chained copy of your work on this computer and syncs it with the central Worker when that Worker is up.
 
 **Author:** Aziel Eliab
-**Date:** September 2026 · v0.1.0
 **License:** [Apache-2.0](LICENSE)
-**Spec:** `azieltether-v0` — [docs/whitepaper.md](docs/whitepaper.md)
 
-> Prefer central. Peer when down. Reconcile on restore.
+Prefer central. Peer when down. Reconcile on restore.
 
-**Forks are welcome and always allowed.**
+## Start
 
-Live public HTTPS boards (e.g. godlock.uk) stay mesh-free — the tether
-lives in the **downloaded software**.
+1. Install:
 
-## Honest scope
+```bash
+python -m venv .venv && source .venv/bin/activate && pip install -e .
+```
 
-**THIS IS:** a software tether (prefer-central / peer-sync-when-down /
-reconcile-on-restore) plus dual-chain forks and lattice tips.
-
-**THIS IS NOT:** a VPN, MirageGrid, a kernel, a truth score, a backdoor,
-or a mesh on godlock.uk.
-
-## One-click install
+Or, from the counted download:
 
 ```bash
 curl -fsSL https://azieltether-download-tracker.vibelock.workers.dev/install.sh | bash
 ```
 
-The script curls the **counted** tarball from this project's Worker
-(`/download`, User-Agent `Mozilla/5.0`), extracts, makes a venv, and
-`pip install -e .`. Then run `azieltether ui`.
-
-Or tap **Download** / **One-click install** on the Worker homepage:
-https://azieltether-download-tracker.vibelock.workers.dev/
-
-## Quick start
+2. Open the app:
 
 ```bash
-python -m venv .venv && source .venv/bin/activate && pip install -e ".[dev]"
-azieltether init
-azieltether genesis --payload "desk closed"
-azieltether append --payload "score report queued"
-azieltether verify
-azieltether pulse
 azieltether ui
 ```
 
-Open http://127.0.0.1:8874 (loopback only). No CDN, no telemetry.
+3. Open http://127.0.0.1:8874 and press **Start chain**.
 
-Self-check: `azieltether doctor`.
+Self-check: `azieltether doctor`. Machine-readable output: add `--json`.
+
+Forks are welcome and always allowed. Spec: [docs/whitepaper.md](docs/whitepaper.md).
 
 ## Counted download (Cloudflare Worker)
 
@@ -128,15 +104,23 @@ items (scopes `az-clce` / `spre`) into the local DAG.
 
 ## CLI
 
+People get short text. Add `--json` for the same records agents already use.
+
 ```bash
-azieltether version
-azieltether ui        # localhost UI on 127.0.0.1:8874
-azieltether doctor
+azieltether
+azieltether ui
 azieltether init
 azieltether genesis --payload "desk closed"
 azieltether append --payload "queued while central was down"
-azieltether verify
+azieltether status
 azieltether pulse
+azieltether doctor
+azieltether version
+```
+
+Advanced commands (still installed): `verify`, `show`, `node-id`, `peer-sync`, `reconcile`, `dual-chain`, `tip`, `harvest`, `wires`, `survival`, `reheal`, `shelf`, `import`, `export`.
+
+```bash
 azieltether peer-sync --peer http://127.0.0.1:8875
 azieltether reconcile
 azieltether dual-chain
@@ -150,6 +134,7 @@ azieltether shelf seal
 azieltether shelf sync --plane-b-url https://codeberg.org/… --sha256 <hex>
 azieltether shelf usb --dest /media/usb/aziel-shelf
 azieltether shelf attest --src /media/usb/aziel-shelf
+azieltether status --json
 ```
 
 ## iPhone & Android

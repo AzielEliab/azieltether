@@ -46,48 +46,57 @@ PAGE = r"""<!DOCTYPE html>
 <title>AzielTether</title>
 <style>
   :root {
-    --bg: #0f1419; --panel: #171e27; --ink: #e8edf2; --muted: #8b97a6;
-    --line: #2a3544; --gold: #d4bc6a; --focus: #7aa2d4; --bad: #d4534b;
-    --pass: #3dba7a;
+    color-scheme: light dark;
+    --bg: #f7f4ec; --panel: #fffdf8; --ink: #1a1814; --muted: #4e493f;
+    --line: #e4dcc8; --gold: #c9a227; --gold-ink: #6e5810; --field: #fffdf8;
+    --bad: #9b2c2c; --pass: #146b3a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12110e; --panel: #1e1b16; --ink: #f4efe6; --muted: #c8c0b2;
+      --line: #3d372c; --gold: #c9a227; --gold-ink: #e0c36a; --field: #16140f;
+      --bad: #f0b4ae; --pass: #9ddec0;
+    }
   }
   * { box-sizing: border-box; }
   html, body {
     margin: 0; padding: 0; background: var(--bg); color: var(--ink);
-    font-family: system-ui, "Segoe UI", sans-serif; line-height: 1.45;
+    font-family: system-ui, "Segoe UI", sans-serif; line-height: 1.5;
   }
-  body { max-width: 48rem; margin: 0 auto; padding: 2.1rem 1.2rem 4rem; }
-  .tag {
-    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.72rem;
-    letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
-  }
-  h1 { font-size: 2rem; font-weight: 650; letter-spacing: 0.04em; margin: 0.35rem 0 0.25rem; }
-  .motto { color: var(--gold); font-style: italic; margin: 0 0 0.85rem; font-size: 1.05rem; }
-  .lede { color: var(--muted); margin: 0 0 1.5rem; max-width: 42rem; }
-  fieldset {
-    border: 1px solid var(--line); border-radius: 10px; background: var(--panel);
+  body { max-width: 40rem; margin: 0 auto; padding: 1.75rem 1.25rem 3.5rem; }
+  :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .tag { font-size: 0.82rem; color: var(--muted); margin: 0; }
+  h1 { font-size: 1.85rem; font-weight: 650; letter-spacing: -0.02em; margin: 0.2rem 0 0.4rem; }
+  h2 { font-size: 1.05rem; font-weight: 650; margin: 0 0 0.35rem; }
+  .motto { color: var(--gold-ink); margin: 0.35rem 0 0; }
+  .lede { color: var(--muted); margin: 0.85rem 0 1.25rem; max-width: 38rem; }
+  .card, details.panel {
+    border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
     padding: 1.1rem 1.15rem 1.2rem; margin: 0 0 1rem;
   }
-  legend {
-    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.72rem;
-    letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); padding: 0 0.4rem;
+  details.panel > summary {
+    cursor: pointer; font-weight: 650; list-style: none;
   }
-  label { display: block; font-size: 0.92rem; margin: 0.85rem 0 0.3rem; }
+  details.panel > summary::-webkit-details-marker { display: none; }
+  details.panel[open] > summary { margin-bottom: 0.8rem; }
+  label { display: block; font-size: 0.92rem; margin: 0.85rem 0 0.35rem; }
   textarea, input[type="text"] {
-    width: 100%; padding: 0.55rem 0.65rem; border: 1px solid var(--line);
-    border-radius: 6px; background: #10161d; color: var(--ink); font: inherit;
+    width: 100%; max-width: 100%; padding: 0.65rem 0.7rem; border: 1px solid var(--line);
+    border-radius: 8px; background: var(--field); color: var(--ink); font: inherit;
   }
-  textarea:focus, input:focus { outline: 2px solid var(--focus); outline-offset: 1px; }
-  .actions { display: flex; gap: 0.65rem; flex-wrap: wrap; margin: 0 0 1.2rem; }
+  .actions { display: flex; gap: 0.65rem; flex-wrap: wrap; margin: 1rem 0 0; }
   button, .filebtn {
-    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.85rem;
-    letter-spacing: 0.04em; padding: 0.65rem 1rem; border-radius: 8px;
-    border: 1px solid var(--ink); background: var(--ink); color: var(--bg);
+    font: inherit; font-size: 0.95rem; min-height: 2.75rem;
+    padding: 0.55rem 1rem; border-radius: 8px;
+    border: 1px solid #1a1814; background: var(--gold); color: #1a1814;
     cursor: pointer; font-weight: 650;
   }
-  button.ghost { background: transparent; color: var(--ink); }
+  button.ghost, .filebtn {
+    background: transparent; color: var(--ink); border-color: var(--line);
+  }
   .banner {
-    margin: 0 0 1rem; padding: 0.9rem 1rem; border-radius: 10px;
-    border: 1px solid var(--line); background: var(--panel); color: var(--muted);
+    margin: 0 0 1rem; padding: 0.85rem 1rem; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--panel); color: var(--ink);
   }
   .banner.ok { color: var(--pass); border-color: var(--pass); }
   .banner.bad { color: var(--bad); border-color: var(--bad); }
@@ -95,97 +104,122 @@ PAGE = r"""<!DOCTYPE html>
     border: 1px solid var(--line); border-radius: 10px; background: var(--panel);
     padding: 0.85rem 1rem; margin: 0 0 0.65rem;
   }
-  .hash { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.75rem; word-break: break-all; color: var(--muted); }
-  footer { margin-top: 2rem; color: var(--muted); font-size: 0.88rem; }
+  .hash { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.78rem; word-break: break-word; color: var(--muted); }
+  .empty { color: var(--muted); margin: 0.2rem 0 1rem; }
+  footer { margin-top: 1.5rem; color: var(--muted); font-size: 0.9rem; }
+  pre { white-space: pre-wrap; word-break: break-word; margin: 0.5rem 0 0; }
   input[type="file"] { display: none; }
+  @media (max-width: 420px) {
+    body { padding: 1rem 0.9rem 2.5rem; }
+    h1 { font-size: 1.55rem; }
+    .actions { flex-direction: column; align-items: stretch; }
+    button, .filebtn { width: 100%; text-align: center; }
+  }
 </style>
 </head>
 <body>
   <header>
-    <div class="tag">AzielTether · __VERSION__ · software tether · loopback</div>
+    <p class="tag">AzielTether · __VERSION__ · this computer · 127.0.0.1</p>
     <h1>AzielTether</h1>
+    <p class="lede">Keeps a hash-chained copy of your work on this computer and syncs it with the central Worker when that Worker is up.</p>
     <p class="motto">Prefer central. Peer when down. Reconcile on restore.</p>
-    <p class="lede">
-      Central × decentral node-mesh software tether. Prefer the Worker when
-      it is up. When it is down, nodes sync hash-chained work with each other,
-      then reconcile on restore. SPLIT THE WIRES: tick is presence + tip
-      only; payload is a receiver pull on the 777s gate. COLD-COPY SURVIVAL:
-      multiply sealed copies; no live body sync. REHEAL from own last
-      good tip plus a trusted pull, or phoenix-WAIT — no neighbor
-      vote-to-fix. COLD-SHELF TETHER: prefer Worker when up (Plane A);
-      last local Plane C when down; hash reconcile on restore — never
-      rewrite. Plane B SLOT until hash-verify on Codeberg / archive.org
-      / GitFlic (Zenodo dead; no invented DOI). USB tip-pack LIVE after
-      sha256sum -c attest. Dual-chain keeps both
-      children of the same prev_hash. Public boards stay mesh-free. Bound
-      to 127.0.0.1.
-    </p>
   </header>
 
-  <p class="banner" id="status">Loading…</p>
+  <p class="banner" id="status" role="status">Loading…</p>
 
-  <fieldset>
-    <legend>New item</legend>
-    <label for="payload">Payload (required)</label>
-    <textarea id="payload" rows="3" placeholder="desk closed / score report / tip note"></textarea>
-    <div class="actions" style="margin-top:1rem">
-      <button type="button" id="genesis">Genesis</button>
-      <button type="button" id="append">Append</button>
-      <button type="button" class="ghost" id="verify">Verify</button>
+  <section class="card">
+    <h2>Your chain</h2>
+    <p class="lede" id="lead">Write one note. That starts the chain on this computer.</p>
+    <label for="payload">Note</label>
+    <textarea id="payload" rows="3" placeholder="desk closed"></textarea>
+    <div class="actions">
+      <button type="button" id="primary">Start chain</button>
+      <button type="button" class="ghost" id="doctor">Doctor</button>
     </div>
-  </fieldset>
+  </section>
 
-  <div class="actions">
-    <button type="button" id="pulse">Pulse</button>
-    <button type="button" class="ghost" id="reconcile">Reconcile</button>
-    <button type="button" class="ghost" id="dual">Dual-chain</button>
-    <button type="button" class="ghost" id="tips">Tips</button>
-    <button type="button" class="ghost" id="doctor">Doctor</button>
-    <button type="button" class="ghost" id="shelf-seal">Seal shelf</button>
-    <button type="button" class="ghost" id="shelf-sync">Shelf sync</button>
-    <label class="filebtn">Import JSON<input type="file" id="import-json" accept=".json,application/json"></label>
-    <button type="button" class="ghost" id="export">Export JSON</button>
-  </div>
-
-  <fieldset>
-    <legend>Peer URL (when central is down)</legend>
-    <input id="peer" type="text" placeholder="http://127.0.0.1:8875">
-    <div class="actions" style="margin-top:0.8rem">
-      <button type="button" class="ghost" id="peer-add">Add peer + sync</button>
-    </div>
-  </fieldset>
-
-  <fieldset>
-    <legend>Cold-shelf URL (Codeberg / archive.org / GitFlic / local path)</legend>
-    <input id="shelf-url" type="text" placeholder="https://codeberg.org/… or https://archive.org/… or local path">
-    <label for="shelf-sha">Expected SHA-256 (required for Plane B LIVE; refuse on mismatch)</label>
-    <input id="shelf-sha" type="text" placeholder="64 lowercase hex">
-    <p class="lede">Zenodo is IP-banned. Do not invent a DOI. USB tip-pack is not LIVE until sha256sum -c then <span class="hash">azieltether shelf attest</span>.</p>
-    <div class="actions" style="margin-top:0.8rem">
-      <button type="button" class="ghost" id="shelf-pull">Pull + verify</button>
-    </div>
-    <label for="shelf-usb">USB tip-pack path (after sha256sum -c)</label>
-    <input id="shelf-usb" type="text" placeholder="/media/usb/aziel-shelf">
-    <div class="actions" style="margin-top:0.8rem">
-      <button type="button" class="ghost" id="shelf-attest">Operator attest</button>
-    </div>
-  </fieldset>
-
-  <h2 class="tag">Items</h2>
+  <h2>Items</h2>
+  <p class="empty" id="empty">No items yet.</p>
   <div id="items"></div>
-  <pre id="out" class="hash"></pre>
+
+  <details class="panel" id="advanced">
+    <summary>Advanced</summary>
+    <div class="actions">
+      <button type="button" class="ghost" id="verify">Check chain</button>
+      <button type="button" class="ghost" id="pulse">Pulse</button>
+      <button type="button" class="ghost" id="reconcile">Reconcile</button>
+      <button type="button" class="ghost" id="dual">Dual-chain</button>
+      <button type="button" class="ghost" id="tips">Refresh tips</button>
+      <button type="button" class="ghost" id="shelf-seal">Seal shelf</button>
+      <button type="button" class="ghost" id="shelf-sync">Shelf sync</button>
+      <label class="filebtn">Import JSON<input type="file" id="import-json" accept=".json,application/json"></label>
+      <button type="button" class="ghost" id="export">Export JSON</button>
+    </div>
+    <label for="peer">Peer URL, when the Worker is down</label>
+    <input id="peer" type="text" placeholder="http://127.0.0.1:8875">
+    <div class="actions">
+      <button type="button" class="ghost" id="peer-add">Add peer and sync</button>
+    </div>
+    <label for="shelf-url">Cold-shelf URL (Codeberg, archive.org, GitFlic, or a local path)</label>
+    <input id="shelf-url" type="text" placeholder="https://codeberg.org/…">
+    <label for="shelf-sha">Expected SHA-256</label>
+    <input id="shelf-sha" type="text" placeholder="64 lowercase hex" autocomplete="off">
+    <div class="actions">
+      <button type="button" class="ghost" id="shelf-pull">Pull and check</button>
+    </div>
+    <label for="shelf-usb">USB folder, after sha256sum -c</label>
+    <input id="shelf-usb" type="text" placeholder="/media/usb/aziel-shelf">
+    <div class="actions">
+      <button type="button" class="ghost" id="shelf-attest">Attest USB tip-pack</button>
+    </div>
+    <details>
+      <summary>Last response</summary>
+      <pre id="out" class="hash"></pre>
+    </details>
+  </details>
+
+  <details class="panel" id="notes">
+    <summary>Notes</summary>
+    <p>This page listens on 127.0.0.1 only. Public boards stay mesh-free. The tether runs in this downloaded software.</p>
+    <p>SPLIT THE WIRES: a tick carries presence and the tip only. The payload is a pull on the separate gate. COLD-COPY SURVIVAL: sealed copies stay on this computer. REHEAL uses this node's last good tip, or phoenix-WAIT. COLD-SHELF TETHER: prefer the Worker when it is up, keep the last local shelf when it is down, and reconcile by hash when it returns. Plane B waits for a hash check on Codeberg, archive.org, or GitFlic. A USB tip-pack is attested with sha256sum -c.</p>
+    <p>Both children of the same previous hash are kept.</p>
+  </details>
+
   <footer>
-    <p>Author Aziel Eliab. Apache-2.0. Forks welcome. Not a VPN. Not MirageGrid.</p>
-    <p class="lede">__LIMIT__</p>
+    <p>Author Aziel Eliab. Apache-2.0. Forks welcome.</p>
   </footer>
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
   const out = $("out");
   const status = $("status");
+  let hasChain = false;
   function banner(text, ok) {
     status.textContent = text;
     status.className = "banner " + (ok ? "ok" : "bad");
+  }
+  function plainError(err) {
+    if (err === "payload is required") return "Write a note first.";
+    if (err === "run genesis first") return "Start the chain before adding another note.";
+    if (err === "attest needs src") return "Enter the USB folder, then attest.";
+    return err;
+  }
+  function syncPrimary() {
+    const btn = $("primary");
+    const lead = $("lead");
+    if (hasChain) {
+      btn.textContent = "Add note";
+      lead.textContent = "Add a note to the chain on this computer.";
+    } else {
+      btn.textContent = "Start chain";
+      lead.textContent = "Write one note. That starts the chain on this computer.";
+    }
+  }
+  function modeLine(mode) {
+    if (mode === "prefer-central") return "Prefer the Worker.";
+    if (mode === "peer-sync-when-down") return "Peer sync. The Worker is not in use.";
+    if (mode === "reconcile-on-restore") return "Reconciled with the Worker.";
+    return "";
   }
   async function get(path) {
     const r = await fetch(path, { headers: { "Accept": "application/json" } });
@@ -197,35 +231,100 @@ PAGE = r"""<!DOCTYPE html>
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body || {}),
     });
-    return r.json();
+    const data = await r.json();
+    data._httpOk = r.ok;
+    return data;
   }
   function draw(data) {
-    out.textContent = JSON.stringify(data, null, 2);
-    const items = data.items || data.chain || [];
-    const box = $("items");
-    box.innerHTML = "";
-    (Array.isArray(items) ? items : []).forEach((it, i) => {
-      const d = document.createElement("div");
-      d.className = "item";
-      d.innerHTML = "<div class='hash'>#" + i + " " + (it.created_at || "") + " · " + (it.kind || "work") + " · " + (it.scope || "") + "</div>"
-        + "<div>" + (it.payload || it.report_hash || "") + "</div>"
-        + "<div class='hash'>prev " + (it.prev_hash || "") + "</div>"
-        + "<div class='hash'>hash " + (it.hash || "") + "</div>";
-      box.appendChild(d);
-    });
-    const mode = data.mode || (data.verify && data.verify.ok ? "verify-ok" : "");
-    if (data.error) banner(data.error, false);
-    else banner((mode || "ready") + " · items " + ((data.verify && data.verify.items) || (Array.isArray(items) ? items.length : 0)), !data.error);
+    if (out) out.textContent = JSON.stringify(data, null, 2);
+    const hasItems = Array.isArray(data.items);
+    if (hasItems) {
+      hasChain = data.items.length > 0;
+      syncPrimary();
+      const box = $("items");
+      box.innerHTML = "";
+      data.items.forEach((it, i) => {
+        const d = document.createElement("div");
+        d.className = "item";
+        const payload = document.createElement("div");
+        payload.textContent = it.payload || it.report_hash || "";
+        const meta = document.createElement("div");
+        meta.className = "hash";
+        meta.textContent = "#" + (i + 1) + "  " + (it.created_at || "");
+        const prev = document.createElement("div");
+        prev.className = "hash";
+        prev.textContent = "prev " + (it.prev_hash || "");
+        const hash = document.createElement("div");
+        hash.className = "hash";
+        hash.textContent = "hash " + (it.hash || "");
+        d.appendChild(meta);
+        d.appendChild(payload);
+        d.appendChild(prev);
+        d.appendChild(hash);
+        box.appendChild(d);
+      });
+      $("empty").hidden = hasChain;
+    }
+    if (data.error) {
+      banner(plainError(String(data.error)), false);
+      return;
+    }
+    if (data.code) {
+      const known = {
+        "SHELF-SEAL": "Shelf sealed on this computer.",
+        "SHELF-OPERATOR-ATTEST": "USB tip-pack attested.",
+        "CNS-OPERATOR-ATTEST": "USB tip-pack is not attested yet."
+      };
+      const line = known[data.code] || (data.note ? String(data.note) : ("Finished. Code " + data.code + "."));
+      banner(line, data.ok !== false && data._httpOk !== false);
+      return;
+    }
+    const count = (data.verify && typeof data.verify.items === "number") ? data.verify.items : (hasItems ? data.items.length : null);
+    const extra = modeLine(data.mode);
+    if (data.message && count === 0) {
+      banner("No items yet. Write a note, then start the chain.", true);
+      return;
+    }
+    if (data.verify && data.verify.ok === false) {
+      banner("Chain needs attention." + (extra ? " " + extra : ""), false);
+      return;
+    }
+    if (count !== null) {
+      const head = count === 0 ? "No items yet." : "Chain checks out. " + count + " item" + (count === 1 ? "" : "s") + ".";
+      banner((extra ? extra + " " : "") + head, true);
+      return;
+    }
+    if (data.message) banner(String(data.message), data.ok !== false && data._httpOk !== false);
+    else if (data.note) banner(String(data.note), data.ok !== false);
+    else banner(data.ok === false ? "That did not finish." : "Done.", data.ok !== false);
   }
   async function refresh() { draw(await get("/api/status")); }
-  $("genesis").onclick = async () => draw(await post("/api/genesis", { payload: $("payload").value }));
-  $("append").onclick = async () => draw(await post("/api/append", { payload: $("payload").value }));
+  $("primary").onclick = async () => {
+    const note = $("payload").value;
+    if (!String(note).trim()) {
+      banner("Write a note first.", false);
+      $("payload").focus();
+      return;
+    }
+    const path = hasChain ? "/api/append" : "/api/genesis";
+    const data = await post(path, { payload: note });
+    if (!data.error) $("payload").value = "";
+    draw(data);
+  };
   $("verify").onclick = async () => draw(await post("/api/verify", {}));
   $("pulse").onclick = async () => draw(await post("/api/pulse", {}));
   $("reconcile").onclick = async () => draw(await post("/api/reconcile", {}));
-  $("dual").onclick = async () => draw(await get("/api/dual-chain"));
+  $("dual").onclick = async () => {
+    const data = await get("/api/dual-chain");
+    if (out) out.textContent = JSON.stringify(data, null, 2);
+    const n = Array.isArray(data.forks) ? data.forks.length : 0;
+    banner(n === 0 ? "No forks. Both children of the same previous hash are kept when one appears." : n + " fork(s). Both children are kept.", true);
+  };
   $("tips").onclick = async () => draw(await post("/api/tip", {}));
-  $("doctor").onclick = async () => draw(await get("/api/doctor"));
+  $("doctor").onclick = async () => {
+    const data = await get("/api/doctor");
+    banner("Run azieltether doctor in a terminal for the full self-check.", !!data.ok);
+  };
   $("shelf-seal").onclick = async () => draw(await post("/api/shelf-seal", {}));
   $("shelf-sync").onclick = async () => draw(await post("/api/shelf-sync", {
     url: $("shelf-url").value,
@@ -256,13 +355,22 @@ PAGE = r"""<!DOCTYPE html>
     a.download = "azieltether.json";
     a.click();
     URL.revokeObjectURL(a.href);
+    banner("Export downloaded.", true);
   };
   refresh().catch((e) => banner(String(e), false));
 })();
 </script>
 </body>
 </html>
-""".replace("__VERSION__", __version__).replace("__LIMIT__", LIMITATION)
+""".replace("__VERSION__", __version__)
+
+
+def _wants_json(accept: str | None) -> bool:
+    """HTML unless the caller asks for JSON and does not ask for HTML."""
+    header = (accept or "").lower()
+    if "text/html" in header:
+        return False
+    return "application/json" in header
 
 
 class TetherServer(ThreadingHTTPServer):
@@ -337,6 +445,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
         if path in ("/", "/index.html"):
+            if _wants_json(self.headers.get("Accept")):
+                self._json(200, _snapshot(self._store(), "Local app."))
+                return
             self._send(200, PAGE.encode("utf-8"), "text/html; charset=utf-8")
             return
         if path == "/health":
@@ -553,8 +664,7 @@ def make_server(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, home: str | 
 
 def serve(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, home: str | Path | None = None) -> None:
     httpd = make_server(host, port, home)
-    sys.stdout.write(f"AzielTether UI  http://{host}:{port}/\n")
-    sys.stdout.write("Local only. Prefer central. Peer when down. Reconcile on restore.\n")
+    sys.stdout.write(f"Open http://{host}:{port}/\n")
     sys.stdout.flush()
     try:
         httpd.serve_forever()
